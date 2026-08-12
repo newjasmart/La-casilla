@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Env
+.env
+.env.local
+.env*.local
+supabase/functions/.env
+
+# Supabase
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# Types generats
+types/database.ts
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
