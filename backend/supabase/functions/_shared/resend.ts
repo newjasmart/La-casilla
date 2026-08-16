@@ -1,4 +1,6 @@
-// Petit client Resend (sense dependència externa, només fetch)
+// Client Resend sense dependències externes. RESEND_API_KEY només es llegeix al servidor.
+import { assertApprovedFromAddress, emailDeliveryMode, type EnvReader, requireResendApiKey, runtimeEnv } from "./config.ts";
+
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export interface ResendPayload {
@@ -9,13 +11,21 @@ export interface ResendPayload {
   reply_to?: string;
 }
 
-export async function sendEmail(payload: ResendPayload): Promise<void> {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) {
-    throw new Error("Falta la variable d'entorn RESEND_API_KEY");
-  }
+export interface ResendDependencies {
+  env?: EnvReader;
+  fetcher?: typeof fetch;
+}
 
-  const res = await fetch(RESEND_ENDPOINT, {
+export async function sendEmail(
+  payload: ResendPayload,
+  dependencies: ResendDependencies = {},
+): Promise<void> {
+  const env = dependencies.env ?? runtimeEnv();
+  assertApprovedFromAddress(payload.from);
+  if (emailDeliveryMode(env) === "mock") return;
+  const apiKey = requireResendApiKey(env);
+
+  const response = await (dependencies.fetcher ?? fetch)(RESEND_ENDPOINT, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -24,19 +34,8 @@ export async function sendEmail(payload: ResendPayload): Promise<void> {
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Resend ha retornat ${res.status}: ${text}`);
+  if (!response.ok) {
+    const text = (await response.text()).slice(0, 1000);
+    throw new Error(`Resend ha retornat ${response.status}: ${text}`);
   }
-}
-
-export function casaInfo() {
-  return {
-    nom:     Deno.env.get("CASA_NOM")     ?? "La Casilla",
-    telefon: Deno.env.get("CASA_TELEFON") ?? "",
-    adreca:  Deno.env.get("CASA_ADRECA")  ?? "",
-    web:     Deno.env.get("CASA_WEB")     ?? "",
-    from:    Deno.env.get("RESEND_FROM_EMAIL")  ?? "no-reply@lacasilla.cat",
-    owner:   Deno.env.get("RESEND_OWNER_EMAIL") ?? "",
-  };
 }

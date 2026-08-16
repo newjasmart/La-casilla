@@ -2,6 +2,7 @@
   "name": "la-casilla-backend",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Backend Supabase + Resend per a la casa d'hostes La Casilla",
   "scripts": {
     "db:start": "supabase start",
@@ -10,14 +11,17 @@
     "db:push": "supabase db push",
     "db:diff": "supabase db diff",
     "db:seed": "supabase db reset",
+    "db:test": "supabase test db --local supabase/tests",
     "functions:serve": "supabase functions serve --env-file ./supabase/functions/.env",
     "functions:deploy": "supabase functions deploy",
     "functions:deploy:reservation": "supabase functions deploy send-reservation",
     "functions:deploy:contact": "supabase functions deploy send-contact",
     "secrets:set": "supabase secrets set --env-file ./supabase/functions/.env",
-    "types:generate": "supabase gen types typescript --local > types/database.ts"
+    "secrets:set:production": "supabase secrets set --env-file ./supabase/functions/.env.production",
+    "types:generate": "supabase gen types typescript --local > types/database.ts",
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "devDependencies": {
-    "supabase": "^1.200.3"
+    "supabase": "^2.114.0"
   }
 }

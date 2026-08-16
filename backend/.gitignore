@@ -1,11 +1,14 @@
 # Dependencies
 node_modules/
 
-# Env
+# Env (tous les fichiers réels restent locaux ; seuls les exemples sont suivis)
 .env
-.env.local
-.env*.local
+.env.*
+!.env.example
 supabase/functions/.env
+supabase/functions/.env.*
+!supabase/functions/.env.example
+!supabase/functions/.env.production.example
 
 # Supabase
 supabase/.branches
