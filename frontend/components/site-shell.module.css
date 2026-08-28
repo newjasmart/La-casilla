@@ -35,10 +35,34 @@
   list-style: none;
 }
 
-.plannedRoute {
+.navigationLink,
+.bookingLink {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 3px;
   color: var(--color-muted);
   font-size: 0.88rem;
-  cursor: default;
+  font-weight: 600;
+}
+
+.navigationLink:hover {
+  color: var(--color-text);
+}
+
+.bookingLink {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  color: #fff;
+  background: #354b37;
+}
+
+.navigationLink:focus-visible,
+.bookingLink:focus-visible,
+.brand:focus-visible {
+  outline: 3px solid rgb(149 102 41 / 30%);
+  outline-offset: 3px;
 }
 
 .footer {
@@ -61,7 +85,7 @@
     min-height: 70px;
   }
 
-  .navigation {
+  .navigation li:not(:last-child) {
     display: none;
   }
 }

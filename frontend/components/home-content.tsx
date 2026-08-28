@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { connection } from "next/server";
+import { BookingFlow } from "@/components/booking-flow";
 import { getHomeData } from "@/lib/home-data";
 import type {
   HomeData,
@@ -81,11 +82,11 @@ function PropertyOverview({
     <section className={styles.discovery} id="descobrir" aria-labelledby="discovery-title">
       <div className={styles.storyGrid}>
         <div className={styles.storyCopy}>
-          <p className={styles.eyebrow}>La casa</p>
-          <h2 id="discovery-title">Una manera tranquil·la de viure cada dia.</h2>
+          <p className={styles.eyebrow}>La casa sencera per al vostre grup</p>
+          <h2 id="discovery-title">Un espai privat per compartir al vostre ritme.</h2>
           <p>
-            Pedra, llum i natura conviuen en una casa pensada per compartir, descansar i
-            tornar a gaudir de les coses senzilles.
+            Veniu amb la família, les amistats o el grup ciclista. Pedra, llum i natura
+            conviuen en una casa que serà només vostra durant tota l’estada.
           </p>
         </div>
         <div className={styles.storyImage}>
@@ -191,7 +192,7 @@ function Rooms() {
 
 function MediaGallery({ media }: { media: PublicPropertyMedia[] }) {
   return (
-    <section className={styles.dataSection} aria-labelledby="media-title">
+    <section className={styles.dataSection} id="fotos" aria-labelledby="media-title">
       <div className={styles.sectionHeading}>
         <p className={styles.eyebrow}>En imatges</p>
         <h2 id="media-title">La casa, des de tots els angles.</h2>
@@ -323,9 +324,10 @@ export async function HomeContent() {
           <p className={styles.eyebrow}>Casa sencera · Natura · Calma</p>
           <h1 id="hero-title">{title}</h1>
           <p className={styles.lead}>{description}</p>
-          <a className={styles.primaryAction} href="#descobrir">
-            Descobriu la casa
-          </a>
+          <div className={styles.heroActions}>
+            <a className={styles.primaryAction} href="#reserva">Consulta disponibilitat</a>
+            <a className={styles.secondaryAction} href="#descobrir">Descobriu la casa</a>
+          </div>
         </div>
       </section>
 
@@ -341,6 +343,12 @@ export async function HomeContent() {
       <OutdoorMoment />
       <Rooms />
       <MediaGallery media={media} />
+      <BookingFlow
+        minimumAdvanceDays={property?.minimum_advance_days}
+        bookingHorizonDays={property?.booking_horizon_days}
+        maxGuests={property?.max_guests}
+        maxInfants={property?.max_infants}
+      />
       <Reviews reviews={reviews} />
 
       <section className={styles.nextStep} aria-labelledby="next-step-title">
@@ -348,10 +356,12 @@ export async function HomeContent() {
         <div className={styles.nextStepOverlay} />
         <div className={styles.nextStepContent}>
           <p className={styles.eyebrow}>La vostra estada</p>
-          <h2 id="next-step-title">Prepareu uns dies per recordar.</h2>
+          <h2 id="next-step-title">La casa, la colla i les bicicletes.</h2>
           <p>
-            Ben aviat podreu consultar la disponibilitat, demanar pressupost i preparar la reserva.
+            Un punt de partida per pedalar per la regió i un espai privat on descansar,
+            cuinar i compartir el final de cada jornada.
           </p>
+          <a className={styles.nextStepAction} href="#reserva">Consulta les vostres dates</a>
         </div>
       </section>
     </>

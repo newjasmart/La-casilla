@@ -84,22 +84,55 @@
   line-height: 1.7;
 }
 
-.primaryAction {
-  display: inline-flex;
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-top: 38px;
+}
+
+.primaryAction,
+.secondaryAction,
+.nextStepAction {
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 14px 23px;
   border: 1px solid rgb(255 255 255 / 45%);
   border-radius: 999px;
-  color: #283629;
-  background: #fffdf8;
   box-shadow: 0 12px 32px rgb(0 0 0 / 16%);
   font-weight: 700;
   transition: background 160ms ease, transform 160ms ease;
 }
 
-.primaryAction:hover {
-  background: #f1ddbd;
+.primaryAction {
+  color: #283629;
+  background: #fffdf8;
+}
+
+.secondaryAction,
+.nextStepAction {
+  color: #fffdf8;
+  background: rgb(31 46 33 / 32%);
+  backdrop-filter: blur(8px);
+}
+
+.primaryAction:hover,
+.secondaryAction:hover,
+.nextStepAction:hover {
   transform: translateY(-2px);
+}
+
+.primaryAction:hover { background: #f1ddbd; }
+.secondaryAction:hover,
+.nextStepAction:hover { background: rgb(31 46 33 / 48%); }
+
+.primaryAction:focus-visible,
+.secondaryAction:focus-visible,
+.nextStepAction:focus-visible {
+  outline: 3px solid rgb(255 253 248 / 58%);
+  outline-offset: 3px;
 }
 
 .dataNotice {
@@ -490,12 +523,16 @@
   font-size: clamp(2.8rem, 6vw, 5.6rem);
 }
 
-.nextStepContent > p:last-child {
+.nextStepContent > p {
   max-width: 620px;
   margin-top: 24px;
   color: rgb(255 253 248 / 88%);
   font-size: 1.08rem;
   line-height: 1.7;
+}
+
+.nextStepAction {
+  margin-top: 30px;
 }
 
 @media (max-width: 860px) {
@@ -557,7 +594,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .primaryAction { transition: none; }
+  .primaryAction,
+  .secondaryAction,
+  .nextStepAction { transition: none; }
   .roomCard img,
   .roomCardLarge img,
   .loadingLine,

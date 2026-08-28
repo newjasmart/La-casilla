@@ -1,11 +1,10 @@
 import Link from "next/link";
 import styles from "./site-shell.module.css";
 
-const plannedRoutes = [
-  "Disponibilitat",
-  "Reserva",
-  "Contacte",
-  "Pressupost",
+const navigation = [
+  { label: "La casa", href: "#descobrir" },
+  { label: "Fotos", href: "#fotos" },
+  { label: "Disponibilitat", href: "#reserva" },
 ] as const;
 
 export function SiteHeader() {
@@ -17,13 +16,16 @@ export function SiteHeader() {
         </Link>
         <nav aria-label="Navegació principal">
           <ul className={styles.navigation}>
-            {plannedRoutes.map((label) => (
-              <li key={label}>
-                <span className={styles.plannedRoute} aria-disabled="true">
-                  {label}
-                </span>
+            {navigation.map((item) => (
+              <li key={item.href}>
+                <Link className={styles.navigationLink} href={`/${item.href}`}>
+                  {item.label}
+                </Link>
               </li>
             ))}
+            <li>
+              <Link className={styles.bookingLink} href="/#reserva">Reservar</Link>
+            </li>
           </ul>
         </nav>
       </div>
