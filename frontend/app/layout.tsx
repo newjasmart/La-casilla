@@ -9,12 +9,12 @@ export const metadata: Metadata = {
     default: "La Casilla",
     template: "%s | La Casilla",
   },
-  description: "Découvrez La Casilla, une maison entière pensée pour vos séjours.",
+  description: "Descobriu La Casilla, una casa sencera pensada per gaudir d’una estada amb calma.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="fr">
+    <html lang="ca">
       <body>
         <SiteHeader />
         <main className="site-main">{children}</main>

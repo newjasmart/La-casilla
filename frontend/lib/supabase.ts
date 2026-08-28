@@ -54,7 +54,7 @@ export async function supabaseFetch<T>(
 
   if (!response.ok) {
     throw new SupabaseRequestError(
-      errorMessage(payload, "Le backend n'a pas pu traiter la demande."),
+      errorMessage(payload, "El servidor no ha pogut processar la sol·licitud."),
       response.status,
       payload,
     );

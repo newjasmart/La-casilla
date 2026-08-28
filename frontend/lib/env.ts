@@ -1,41 +1,22 @@
 import type { SupabasePublicConfig } from "@/types/api";
 
-function required(name: string, value: string | undefined): string {
-  const normalized = value?.trim();
-
-  if (!normalized) {
-    throw new Error(`La variable d'environnement ${name} est manquante.`);
-  }
-
-  return normalized;
-}
-
-function normalizeSupabaseUrl(value: string): string {
-  const url = new URL(value);
-
-  if (!(["http:", "https:"] as const).includes(url.protocol as "http:" | "https:")) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL doit utiliser HTTP ou HTTPS.");
-  }
-
-  if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL doit être une origine Supabase sans chemin.");
-  }
-
-  return url.origin;
+function required(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`Falta la variable d’entorn ${name}.`);
+  return value;
 }
 
 export function getSupabasePublicConfig(): SupabasePublicConfig {
-  const url = required(
-    "NEXT_PUBLIC_SUPABASE_URL",
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-  );
-  const anonKey = required(
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
+  const rawUrl = required("NEXT_PUBLIC_SUPABASE_URL");
+  const anonKey = required("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const url = new URL(rawUrl);
 
-  return {
-    url: normalizeSupabaseUrl(url),
-    anonKey,
-  };
+  if (!( ["http:", "https:"] as const).includes(url.protocol as "http:" | "https:")) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL ha d’utilitzar HTTP o HTTPS.");
+  }
+  if (url.pathname !== "/" || url.search || url.hash) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL ha de ser un origen de Supabase sense cap ruta.");
+  }
+
+  return { url: url.origin, anonKey };
 }

@@ -5,7 +5,7 @@ export function SiteFooter() {
     <footer className={styles.footer}>
       <div className={styles.footerInner}>
         <p className={styles.footerBrand}>La Casilla</p>
-        <p>Un lieu pour ralentir et se retrouver.</p>
+        <p>Un lloc per aturar-se i retrobar-se.</p>
       </div>
     </footer>
   );
