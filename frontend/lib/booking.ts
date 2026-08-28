@@ -20,6 +20,8 @@ export interface StayQuote {
   fees_total: number;
   discount_total: number;
   total_amount: number;
+  nightly_lines: unknown[];
+  fee_lines: unknown[];
 }
 
 export interface ReservationRequest extends StaySelection {
@@ -57,7 +59,7 @@ export async function getStayQuote(selection: StaySelection): Promise<StayQuote>
   });
 }
 
-function idempotencyKey(): string {
+export function createReservationKey(): string {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return `reservation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
@@ -77,7 +79,10 @@ function reservationError(status: number, payload: unknown): string {
   return "No s’ha pogut enviar la sol·licitud de reserva.";
 }
 
-export async function sendReservationRequest(input: ReservationRequest): Promise<ReservationResponse> {
+export async function sendReservationRequest(
+  input: ReservationRequest,
+  idempotencyKey: string,
+): Promise<ReservationResponse> {
   const { url, anonKey } = getSupabasePublicConfig();
   const response = await fetch(`${url}/functions/v1/send-reservation`, {
     method: "POST",
@@ -86,7 +91,7 @@ export async function sendReservationRequest(input: ReservationRequest): Promise
       "Content-Type": "application/json",
       apikey: anonKey,
       Authorization: `Bearer ${anonKey}`,
-      "Idempotency-Key": idempotencyKey(),
+      "Idempotency-Key": idempotencyKey,
     },
     body: JSON.stringify({
       nom: input.firstName,

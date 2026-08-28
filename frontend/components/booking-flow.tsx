@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import {
+  createReservationKey,
   getStayQuote,
   sendReservationRequest,
   type ReservationResponse,
@@ -36,6 +37,33 @@ function addDays(date: Date, days: number): Date {
 
 function formatMoney(value: number, currency: string): string {
   return new Intl.NumberFormat("ca-ES", { style: "currency", currency }).format(value);
+}
+
+function validDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function selectionError(selection: Selection, maxGuests?: number, maxInfants?: number): string | null {
+  if (!validDate(selection.arrival) || !validDate(selection.departure)) {
+    return "Seleccioneu unes dates vàlides d’arribada i sortida.";
+  }
+  if (selection.departure <= selection.arrival) {
+    return "La data de sortida ha de ser posterior a la d’arribada.";
+  }
+  if (!Number.isSafeInteger(selection.adults) || selection.adults < 1
+      || !Number.isSafeInteger(selection.children) || selection.children < 0
+      || !Number.isSafeInteger(selection.infants) || selection.infants < 0) {
+    return "Introduïu un nombre d’hostes vàlid.";
+  }
+  if (maxGuests !== undefined && selection.adults + selection.children > maxGuests) {
+    return `La casa té una capacitat màxima de ${maxGuests} persones, sense comptar els nadons.`;
+  }
+  if (maxInfants !== undefined && selection.infants > maxInfants) {
+    return `La casa admet un màxim de ${maxInfants} nadons.`;
+  }
+  return null;
 }
 
 function quoteError(error: unknown): string {
@@ -76,6 +104,7 @@ export function BookingFlow({
   const [sending, setSending] = useState(false);
   const [reservation, setReservation] = useState<ReservationResponse | null>(null);
   const [reservationError, setReservationError] = useState("");
+  const [reservationKey, setReservationKey] = useState<string | null>(null);
 
   function updateSelection<K extends keyof Selection>(key: K, value: Selection[K]) {
     setSelection((current) => ({ ...current, [key]: value }));
@@ -83,12 +112,14 @@ export function BookingFlow({
     setQuoteMessage("");
     setReservation(null);
     setReservationError("");
+    setReservationKey(null);
   }
 
   async function checkAvailability(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (knownCapacity && selection.adults + selection.children > adultsMax) {
-      setQuoteMessage(`La casa té una capacitat màxima de ${adultsMax} persones, sense comptar els nadons.`);
+    const validationError = selectionError(selection, maxGuests, maxInfants);
+    if (validationError) {
+      setQuoteMessage(validationError);
       return;
     }
 
@@ -118,6 +149,8 @@ export function BookingFlow({
     setReservationError("");
 
     try {
+      const key = reservationKey ?? createReservationKey();
+      setReservationKey(key);
       const result = await sendReservationRequest({
         ...selection,
         firstName: String(form.get("firstName") ?? ""),
@@ -127,7 +160,7 @@ export function BookingFlow({
         message: String(form.get("message") ?? ""),
         privacyAccepted: form.get("privacyAccepted") === "on",
         website: String(form.get("website") ?? ""),
-      });
+      }, key);
       setReservation(result);
     } catch (error) {
       setReservationError(error instanceof Error ? error.message : "No s’ha pogut enviar la sol·licitud.");
@@ -262,7 +295,18 @@ export function BookingFlow({
             </div>
             {reservationError && <p className={styles.error} role="alert">{reservationError}</p>}
             <div className={styles.formActions}>
-              <button className={styles.secondaryButton} type="button" onClick={() => setQuote(null)}>Canvia les dates</button>
+              <button
+                className={styles.secondaryButton}
+                type="button"
+                onClick={() => {
+                  setQuote(null);
+                  setQuoteMessage("");
+                  setReservationError("");
+                  setReservationKey(null);
+                }}
+              >
+                Canvia les dates
+              </button>
               <button className={styles.primaryButton} type="submit" disabled={sending}>
                 {sending ? "Enviant…" : "Envia la sol·licitud"}
               </button>
