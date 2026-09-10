@@ -5,6 +5,7 @@ const navigation = [
   { label: "La casa", href: "#descobrir" },
   { label: "Fotos", href: "#fotos" },
   { label: "Disponibilitat", href: "#reserva" },
+  { label: "Contacte", href: "#contacte" },
 ] as const;
 
 export function SiteHeader() {

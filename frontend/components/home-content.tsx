@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { connection } from "next/server";
 import { BookingFlow } from "@/components/booking-flow";
+import { ContactForm } from "@/components/contact-form";
 import { getHomeData } from "@/lib/home-data";
 import type {
   HomeData,
@@ -364,6 +365,8 @@ export async function HomeContent() {
           <a className={styles.nextStepAction} href="#reserva">Consulta les vostres dates</a>
         </div>
       </section>
+
+      <ContactForm />
     </>
   );
 }
