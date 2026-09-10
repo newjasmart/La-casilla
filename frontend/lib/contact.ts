@@ -1,4 +1,7 @@
 import { getSupabasePublicConfig } from "@/lib/env";
+import { createIdempotencyKey, mapStatusToRequestError } from "@/lib/request-errors";
+
+export { RequestError as ContactRequestError, type RequestErrorCode as ContactErrorCode } from "@/lib/request-errors";
 
 export interface ContactRequest {
   name: string;
@@ -17,30 +20,8 @@ export interface ContactResponse {
   error?: string;
 }
 
-export type ContactErrorCode = "conflict" | "rateLimited" | "forbidden" | "validation" | "sendFailed";
-
-export class ContactRequestError extends Error {
-  constructor(readonly code: ContactErrorCode, message: string) {
-    super(message);
-    this.name = "ContactRequestError";
-  }
-}
-
 export function createContactRequestKey(): string {
-  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  return `contact-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function contactError(status: number, payload: unknown): ContactRequestError {
-  const backendText = payload && typeof payload === "object"
-    ? Reflect.get(payload, "error")
-    : undefined;
-  const detail = typeof backendText === "string" ? backendText : "";
-  if (status === 429) return new ContactRequestError("rateLimited", detail);
-  if (status === 403) return new ContactRequestError("forbidden", detail);
-  if (status === 409) return new ContactRequestError("conflict", detail);
-  if (status === 400) return new ContactRequestError("validation", detail);
-  return new ContactRequestError("sendFailed", detail);
+  return createIdempotencyKey("contact");
 }
 
 export async function sendContactRequest(
@@ -71,7 +52,7 @@ export async function sendContactRequest(
 
   const payload = await response.json().catch(() => null) as ContactResponse | null;
   if (!response.ok) {
-    throw contactError(response.status, payload);
+    throw mapStatusToRequestError(response.status, payload);
   }
 
   return payload ?? { ok: true };

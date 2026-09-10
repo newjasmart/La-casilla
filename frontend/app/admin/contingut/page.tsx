@@ -7,15 +7,8 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { RequireStaff } from "@/components/admin/require-staff";
 import { supabaseErrorMessage } from "@/lib/admin-errors";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { TRANSLATABLE_LOCALES, type AdminPropertyContent, type TranslatableLocale } from "@/types/admin";
+import { LOCALE_DISPLAY_NAMES, TRANSLATABLE_LOCALES, type AdminPropertyContent, type TranslatableLocale } from "@/types/admin";
 import styles from "@/app/admin/admin.module.css";
-
-const LOCALE_LABELS: Record<TranslatableLocale, string> = {
-  es: "Castellà (es)",
-  en: "Anglès (en)",
-  nl: "Neerlandès (nl)",
-  fr: "Francès (fr)",
-};
 
 const KNOWN_AMENITY_CODES = [
   "wifi", "garden", "kitchen", "parking", "pool", "air_conditioning", "heating",
@@ -167,7 +160,7 @@ function ContentForm({
               català de dalt.
             </p>
             {TRANSLATABLE_LOCALES.map((locale) => (
-              <label key={locale} style={{ marginTop: 10 }}>{LOCALE_LABELS[locale]}
+              <label key={locale} style={{ marginTop: 10 }}>{LOCALE_DISPLAY_NAMES[locale]}
                 <textarea
                   rows={4}
                   maxLength={10000}

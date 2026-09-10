@@ -7,15 +7,8 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { RequireStaff } from "@/components/admin/require-staff";
 import { supabaseErrorMessage } from "@/lib/admin-errors";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { TRANSLATABLE_LOCALES, type AdminReview, type TranslatableLocale } from "@/types/admin";
+import { LOCALE_DISPLAY_NAMES, TRANSLATABLE_LOCALES, type AdminReview, type TranslatableLocale } from "@/types/admin";
 import styles from "@/app/admin/admin.module.css";
-
-const LOCALE_LABELS: Record<TranslatableLocale, string> = {
-  es: "Castellà (es)",
-  en: "Anglès (en)",
-  nl: "Neerlandès (nl)",
-  fr: "Francès (fr)",
-};
 
 export default function AdminReviewsPage() {
   return (
@@ -32,7 +25,11 @@ async function fetchReviews(): Promise<AdminReview[]> {
     .from("reviews")
     .select("*")
     .eq("property_id", 1)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    // Explicit safety cap rather than a truly unbounded fetch — a single
+    // property's review count is expected to stay well under this, but
+    // nothing should silently fetch an unbounded table.
+    .limit(500);
   if (error) throw new Error(supabaseErrorMessage(error));
   return (data ?? []) as AdminReview[];
 }
@@ -219,7 +216,7 @@ function ReviewsList({
                         en català.
                       </p>
                       {TRANSLATABLE_LOCALES.map((locale) => (
-                        <label key={locale}>{LOCALE_LABELS[locale]}
+                        <label key={locale}>{LOCALE_DISPLAY_NAMES[locale]}
                           <textarea
                             rows={2}
                             value={draftFor(reviews.find((r) => r.id === expandedId)!).comment_translations[locale] ?? ""}

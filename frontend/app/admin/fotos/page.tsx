@@ -34,7 +34,9 @@ async function fetchMedia(): Promise<AdminPropertyMedia[]> {
     .select("*")
     .eq("property_id", 1)
     .order("category", { ascending: true })
-    .order("sort_order", { ascending: true });
+    .order("sort_order", { ascending: true })
+    // Explicit safety cap — see the identical comment in admin/ressenyes.
+    .limit(500);
   if (error) throw new Error(supabaseErrorMessage(error));
   return (data ?? []) as AdminPropertyMedia[];
 }

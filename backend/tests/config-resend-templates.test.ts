@@ -44,6 +44,11 @@ test("config accepts complete production values", () => {
   assert.equal(config.emailDeliveryMode, "live");
 });
 
+test("config accepts a non-production CASA_WEB origin (pre-prod/staging)", () => {
+  const config = loadFunctionConfig(env({ CASA_WEB: "https://staging.lacasillacasarural.com" }));
+  assert.equal(config.casa.web, "https://staging.lacasillacasarural.com");
+});
+
 test("mock email mode requires no API key and never calls fetch", async () => {
   const mockEnv = env({ EMAIL_DELIVERY_MODE: "mock", RESEND_API_KEY: "" });
   assert.equal(loadFunctionConfig(mockEnv).emailDeliveryMode, "mock");
@@ -60,7 +65,8 @@ test("config clearly rejects missing and unapproved values", () => {
   assert.throws(() => loadFunctionConfig(env({ RESEND_OWNER_EMAIL: "" })), /RESEND_OWNER_EMAIL/);
   assert.throws(() => loadFunctionConfig(env({ RESEND_FROM_EMAIL: "sender@example.com" })), /lacasillacasarural\.com/);
   assert.throws(() => loadFunctionConfig(env({ CASA_NOM: "" })), /CASA_NOM/);
-  assert.throws(() => loadFunctionConfig(env({ CASA_WEB: "https:\/\/example.com" })), /CASA_WEB/);
+  assert.throws(() => loadFunctionConfig(env({ CASA_WEB: "https://lacasillacasarural.com/booking" })), /CASA_WEB/);
+  assert.throws(() => loadFunctionConfig(env({ CASA_WEB: "http://lacasillacasarural.com" })), /CASA_WEB/);
   assert.throws(() => loadFunctionConfig(env({ ALLOWED_ORIGINS: "*" })), /ALLOWED_ORIGINS/);
   assert.throws(() => loadFunctionConfig(env({ ANTI_SPAM_HASH_SECRET: "short" })), /32/);
   assert.throws(() => loadFunctionConfig(env({ EMAIL_DELIVERY_MODE: "sometimes" })), /mock o live/);

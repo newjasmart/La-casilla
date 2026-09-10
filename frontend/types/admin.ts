@@ -1,6 +1,27 @@
-/** Non-default languages the site offers, matching frontend/i18n/routing.ts minus the default (ca). */
-export const TRANSLATABLE_LOCALES = ["es", "en", "nl", "fr"] as const;
-export type TranslatableLocale = (typeof TRANSLATABLE_LOCALES)[number];
+import { routing } from "@/i18n/routing";
+
+/**
+ * Non-default languages the site offers — derived from the single source of
+ * truth (i18n/routing.ts) rather than re-typed here, so adding/removing a
+ * locale only ever requires touching routing.ts, messages/*.json and the
+ * matching backend CHECK constraint (20260610000009_content_translations.sql).
+ */
+// next-intl types `routing.defaultLocale` as the full locale union rather than
+// the narrower "ca" literal it's declared with, so `Exclude<Locale,
+// typeof routing.defaultLocale>` resolves to `never` — the literal has to be
+// named here instead. The *set* of locales still comes from routing.ts alone.
+export type TranslatableLocale = Exclude<(typeof routing.locales)[number], "ca">;
+export const TRANSLATABLE_LOCALES = routing.locales.filter(
+  (locale): locale is TranslatableLocale => locale !== routing.defaultLocale,
+);
+
+/** Display names for the admin-only translation editors (contingut, ressenyes). */
+export const LOCALE_DISPLAY_NAMES: Record<TranslatableLocale, string> = {
+  es: "Castellà (es)",
+  en: "Anglès (en)",
+  nl: "Neerlandès (nl)",
+  fr: "Francès (fr)",
+};
 
 export interface AdminPropertyContent {
   property_id: number;

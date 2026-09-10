@@ -112,10 +112,15 @@ export function loadFunctionConfig(env: EnvReader): FunctionConfig {
   } catch {
     throw new ConfigError("CASA_WEB ha de ser una URL vàlida");
   }
-  if (webUrl.origin !== "https://lacasillacasarural.com"
+  // Deliberately not locked to the production domain: a pre-prod/staging
+  // deployment of these functions needs its own CASA_WEB origin (e.g. a
+  // staging subdomain). What's still enforced is the *shape* — HTTPS, no
+  // path/query/fragment/credentials — the same bar ALLOWED_ORIGINS entries
+  // are held to just below.
+  if (webUrl.protocol !== "https:"
       || webUrl.pathname !== "/" || webUrl.search || webUrl.hash
       || webUrl.username || webUrl.password) {
-    throw new ConfigError("CASA_WEB ha de ser exactament https://lacasillacasarural.com");
+    throw new ConfigError("CASA_WEB ha de ser un origen HTTPS net, sense camí, cadena de consulta ni fragment");
   }
 
   const hashSecret = required(env, "ANTI_SPAM_HASH_SECRET");

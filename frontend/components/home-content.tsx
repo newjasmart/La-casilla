@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { BookingFlow } from "@/components/booking-flow";
 import { ContactForm } from "@/components/contact-form";
 import { getHomeData } from "@/lib/home-data";
+import { formatClockTime, formatMonthYear, formatMoney } from "@/lib/intl-format";
 import type {
   HomeData,
   PropertyContentRow,
@@ -16,30 +17,8 @@ import styles from "@/app/page.module.css";
 
 const LOCAL_HERO = "/images/la-casilla/entrada-casilla.webp";
 
-const INTL_LOCALES: Record<string, string> = {
-  ca: "ca-ES",
-  es: "es-ES",
-  en: "en-GB",
-  nl: "nl-NL",
-  fr: "fr-FR",
-};
-
 function formatPrice(property: PropertyRow, locale: string): string {
-  return new Intl.NumberFormat(INTL_LOCALES[locale] ?? locale, {
-    style: "currency",
-    currency: property.currency,
-    maximumFractionDigits: 0,
-  }).format(property.base_nightly_price);
-}
-
-function formatTime(value: string, locale: string): string {
-  const [hours, minutes] = value.split(":");
-  const date = new Date(Date.UTC(2000, 0, 1, Number(hours), Number(minutes)));
-  return new Intl.DateTimeFormat(INTL_LOCALES[locale] ?? locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  }).format(date);
+  return formatMoney(property.base_nightly_price, property.currency, locale, { maximumFractionDigits: 0 });
 }
 
 function fallbackLabel(value: string): string {
@@ -58,13 +37,7 @@ function localizedText(canonical: string, translations: Record<string, string>, 
 }
 
 function reviewDate(value: string | null, locale: string): string | null {
-  if (!value) return null;
-
-  return new Intl.DateTimeFormat(INTL_LOCALES[locale] ?? locale, {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${value}T00:00:00Z`));
+  return value ? formatMonthYear(value, locale) : null;
 }
 
 function PropertyOverview({
@@ -117,10 +90,10 @@ function PropertyOverview({
           </div>
           <div className={styles.stayDetails}>
             <p>
-              {t("checkInFrom")} <strong>{formatTime(content.check_in_time, locale)}</strong>
+              {t("checkInFrom")} <strong>{formatClockTime(content.check_in_time, locale)}</strong>
             </p>
             <p>
-              {t("checkOutBefore")} <strong>{formatTime(content.check_out_time, locale)}</strong>
+              {t("checkOutBefore")} <strong>{formatClockTime(content.check_out_time, locale)}</strong>
             </p>
             <p>
               {t("minStay")} <strong>{t("night", { count: property.base_minimum_nights })}</strong>

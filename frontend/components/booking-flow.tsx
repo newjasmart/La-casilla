@@ -10,6 +10,7 @@ import {
   type ReservationResponse,
   type StayQuote,
 } from "@/lib/booking";
+import { formatMoney } from "@/lib/intl-format";
 import styles from "./booking-flow.module.css";
 
 interface BookingFlowProps {
@@ -27,14 +28,6 @@ interface Selection {
   infants: number;
 }
 
-const INTL_LOCALES: Record<string, string> = {
-  ca: "ca-ES",
-  es: "es-ES",
-  en: "en-GB",
-  nl: "nl-NL",
-  fr: "fr-FR",
-};
-
 function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -43,10 +36,6 @@ function addDays(date: Date, days: number): Date {
   const result = new Date(date);
   result.setUTCDate(result.getUTCDate() + days);
   return result;
-}
-
-function formatMoney(value: number, currency: string, locale: string): string {
-  return new Intl.NumberFormat(INTL_LOCALES[locale] ?? locale, { style: "currency", currency }).format(value);
 }
 
 function validDate(value: string): boolean {

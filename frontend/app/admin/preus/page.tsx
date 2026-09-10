@@ -31,8 +31,9 @@ async function fetchPricingData(): Promise<PricingData> {
   const supabase = getSupabaseBrowserClient();
   const [propertyResult, ratesResult, feesResult] = await Promise.all([
     supabase.from("properties").select("*").eq("id", 1).single(),
-    supabase.from("rate_periods").select("*").eq("property_id", 1).order("priority", { ascending: false }),
-    supabase.from("fee_rules").select("*").eq("property_id", 1).order("sort_order", { ascending: true }),
+    // Explicit safety caps — see the identical comment in admin/ressenyes.
+    supabase.from("rate_periods").select("*").eq("property_id", 1).order("priority", { ascending: false }).limit(500),
+    supabase.from("fee_rules").select("*").eq("property_id", 1).order("sort_order", { ascending: true }).limit(500),
   ]);
 
   const firstError = propertyResult.error ?? ratesResult.error ?? feesResult.error;

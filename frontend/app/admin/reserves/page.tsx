@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import useSWR from "swr";
+import useSWRInfinite from "swr/infinite";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { RequireStaff } from "@/components/admin/require-staff";
 import { supabaseErrorMessage } from "@/lib/admin-errors";
+import { formatMoney } from "@/lib/intl-format";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { AdminReservation, ReservationStatus } from "@/types/admin";
 import styles from "@/app/admin/admin.module.css";
@@ -39,10 +40,6 @@ function formatDate(value: string): string {
     .format(new Date(`${value}T00:00:00Z`));
 }
 
-function formatMoney(value: number, currency: string): string {
-  return new Intl.NumberFormat("ca-ES", { style: "currency", currency }).format(value);
-}
-
 export default function AdminReservationsPage() {
   return (
     <RequireStaff>
@@ -53,12 +50,17 @@ export default function AdminReservationsPage() {
   );
 }
 
-async function fetchReservations(status: ReservationStatus | "all"): Promise<AdminReservation[]> {
+const PAGE_SIZE = 50;
+
+async function fetchReservationsPage(
+  status: ReservationStatus | "all",
+  pageIndex: number,
+): Promise<AdminReservation[]> {
   let query = getSupabaseBrowserClient()
     .from("reservations")
     .select("*")
     .order("requested_at", { ascending: false })
-    .limit(100);
+    .range(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE - 1);
   if (status !== "all") query = query.eq("status", status);
 
   const { data, error } = await query;
@@ -68,11 +70,15 @@ async function fetchReservations(status: ReservationStatus | "all"): Promise<Adm
 
 function ReservationsContent() {
   const [filter, setFilter] = useState<ReservationStatus | "all">("requested");
-  const { data, error: loadError, isLoading, mutate } = useSWR(
-    ["admin-reservations", filter] as const,
-    ([, status]) => fetchReservations(status),
+  const {
+    data: pages, error: loadError, isLoading, isValidating, mutate, size, setSize,
+  } = useSWRInfinite(
+    (pageIndex) => ["admin-reservations", filter, pageIndex] as const,
+    ([, status, pageIndex]) => fetchReservationsPage(status, pageIndex),
   );
-  const rows = data ?? [];
+  const rows = pages?.flat() ?? [];
+  const lastPage = pages?.at(-1);
+  const hasMore = lastPage !== undefined && lastPage.length === PAGE_SIZE;
   const [rowError, setRowError] = useState<Record<string, string>>({});
   const [rowBusy, setRowBusy] = useState<Record<string, boolean>>({});
 
@@ -125,7 +131,7 @@ function ReservationsContent() {
             key={item.value}
             type="button"
             className={item.value === filter ? styles.primaryButton : styles.secondaryButton}
-            onClick={() => setFilter(item.value)}
+            onClick={() => { setFilter(item.value); setSize(1); }}
           >
             {item.label}
           </button>
@@ -156,7 +162,7 @@ function ReservationsContent() {
                     <td>{formatDate(row.arrival_date)}</td>
                     <td>{formatDate(row.departure_date)}</td>
                     <td>{row.adults + row.children} {row.infants > 0 ? `+ ${row.infants} nadó(ns)` : ""}</td>
-                    <td>{formatMoney(row.total_amount, row.currency)}</td>
+                    <td>{formatMoney(row.total_amount, row.currency, "ca")}</td>
                     <td><span className={`${styles.badge} ${styles[STATUS_BADGE[row.status]]}`}>{STATUS_LABELS[row.status]}</span></td>
                     <td>
                       {(row.status === "requested" || row.status === "payment_pending") && (
@@ -183,6 +189,18 @@ function ReservationsContent() {
                 )}
               </tbody>
             </table>
+          </div>
+        )}
+        {hasMore && (
+          <div style={{ marginTop: 16, textAlign: "center" }}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              disabled={isValidating}
+              onClick={() => setSize(size + 1)}
+            >
+              {isValidating ? "Carregant…" : `Carrega'n ${PAGE_SIZE} més`}
+            </button>
           </div>
         )}
       </div>

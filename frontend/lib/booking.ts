@@ -1,5 +1,8 @@
 import { getSupabasePublicConfig } from "@/lib/env";
+import { createIdempotencyKey, mapStatusToRequestError } from "@/lib/request-errors";
 import { supabaseFetch } from "@/lib/supabase";
+
+export { RequestError as ReservationRequestError, type RequestErrorCode as ReservationErrorCode } from "@/lib/request-errors";
 
 export interface StaySelection {
   arrival: string;
@@ -43,15 +46,6 @@ export interface ReservationResponse {
   error?: string;
 }
 
-export type ReservationErrorCode = "conflict" | "rateLimited" | "forbidden" | "validation" | "sendFailed";
-
-export class ReservationRequestError extends Error {
-  constructor(readonly code: ReservationErrorCode, message: string) {
-    super(message);
-    this.name = "ReservationRequestError";
-  }
-}
-
 function rpcBody(selection: StaySelection): string {
   return JSON.stringify({
     p_arrival: selection.arrival,
@@ -70,20 +64,7 @@ export async function getStayQuote(selection: StaySelection): Promise<StayQuote>
 }
 
 export function createReservationKey(): string {
-  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  return `reservation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function reservationError(status: number, payload: unknown): ReservationRequestError {
-  const backendText = payload && typeof payload === "object"
-    ? Reflect.get(payload, "error")
-    : undefined;
-  const detail = typeof backendText === "string" ? backendText : "";
-  if (status === 409) return new ReservationRequestError("conflict", detail);
-  if (status === 429) return new ReservationRequestError("rateLimited", detail);
-  if (status === 403) return new ReservationRequestError("forbidden", detail);
-  if (status === 400) return new ReservationRequestError("validation", detail);
-  return new ReservationRequestError("sendFailed", detail);
+  return createIdempotencyKey("reservation");
 }
 
 export async function sendReservationRequest(
@@ -119,7 +100,7 @@ export async function sendReservationRequest(
 
   const payload = await response.json().catch(() => null) as ReservationResponse | null;
   if (!response.ok) {
-    throw reservationError(response.status, payload);
+    throw mapStatusToRequestError(response.status, payload);
   }
 
   return payload ?? { ok: true };
