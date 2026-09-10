@@ -19,7 +19,7 @@ api_url = "http://127.0.0.1:54321"
 
 [inbucket]
 enabled = true
-port = 54324
+port = 54329
 
 [storage]
 enabled = true
@@ -33,7 +33,7 @@ jwt_expiry = 3600
 enable_signup = false
 
 [auth.email]
-enable_signup = false
+enable_signup = true
 double_confirm_changes = true
 enable_confirmations = true
 
