@@ -12,23 +12,38 @@ import type {
 } from "@/types/home";
 import styles from "@/app/page.module.css";
 
-const LOCAL_HERO = "/images/la-casilla/hero-terrassa.webp";
+const LOCAL_HERO = "/images/la-casilla/entrada-casilla.webp";
 
 const LOCAL_GALLERY = [
   {
-    src: "/images/la-casilla/exterior-vespre.webp",
-    alt: "Exterior de La Casilla al capvespre",
-    caption: "Capvespres per viure sense presses",
+    src: "/images/la-casilla/cuina.webp",
+    alt: "Cuina totalment equipada de La Casilla",
+    caption: "Cuina pensada per cuinar en grup",
   },
   {
-    src: "/images/la-casilla/pati-exterior.webp",
-    alt: "Pati exterior de La Casilla",
-    caption: "Racons per gaudir de l’aire lliure",
+    src: "/images/la-casilla/sala-estar.webp",
+    alt: "Sala d’estar amb llar de foc de La Casilla",
+    caption: "Calma i confort",
   },
   {
-    src: "/images/la-casilla/interior-casa.webp",
-    alt: "Interior càlid i lluminós de La Casilla",
-    caption: "Espais amb caràcter propi",
+    src: "/images/la-casilla/piscina-capvespre.webp",
+    alt: "Piscina de La Casilla al capvespre",
+    caption: "Capvespres a la piscina",
+  },
+  {
+    src: "/images/la-casilla/bany-principal.webp",
+    alt: "Bany principal de La Casilla",
+    caption: "Banys moderns i lluminosos",
+  },
+  {
+    src: "/images/la-casilla/bany-secundari.webp",
+    alt: "Bany secundari amb detalls de fusta",
+    caption: "Materials amb ànima",
+  },
+  {
+    src: "/images/la-casilla/detall-fusta.webp",
+    alt: "Detall de fusta natural al capçal d’una habitació",
+    caption: "Detalls amb caràcter",
   },
 ] as const;
 
@@ -92,8 +107,8 @@ function PropertyOverview({
         </div>
         <div className={styles.storyImage}>
           <Image
-            src="/images/la-casilla/exterior-casa.webp"
-            alt="Exterior de La Casilla entre arbres i jardí"
+            src="/images/la-casilla/vista-aeria-piscina.webp"
+            alt="Vista aèria de La Casilla amb la piscina i el jardí"
             fill
             sizes="(max-width: 860px) 100vw, 50vw"
           />
@@ -157,19 +172,19 @@ function OutdoorMoment() {
 function Rooms() {
   const rooms = [
     {
-      src: "/images/la-casilla/habitacio-lluminosa.webp",
-      alt: "Habitació lluminosa de La Casilla",
+      src: "/images/la-casilla/habitacio-jardi.webp",
+      alt: "Habitació amb accés directe al jardí",
       caption: "Llum natural",
     },
     {
-      src: "/images/la-casilla/habitacio-acollidora.webp",
-      alt: "Habitació acollidora de La Casilla",
-      caption: "Calma i confort",
+      src: "/images/la-casilla/habitacio-muntanya.webp",
+      alt: "Habitació amb terrassa i vistes a la muntanya",
+      caption: "Vistes a la muntanya",
     },
     {
-      src: "/images/la-casilla/habitacio-calida.webp",
-      alt: "Habitació càlida amb detalls de fusta a La Casilla",
-      caption: "Materials amb ànima",
+      src: "/images/la-casilla/habitacio-lliteres.webp",
+      alt: "Habitació amb lliteres per a grups",
+      caption: "Per a tota la colla",
     },
   ] as const;
 
@@ -353,7 +368,7 @@ export async function HomeContent() {
       <Reviews reviews={reviews} />
 
       <section className={styles.nextStep} aria-labelledby="next-step-title">
-        <Image src="/images/la-casilla/facana-vegetacio.webp" alt="" fill sizes="100vw" />
+        <Image src="/images/la-casilla/camps-entorn.webp" alt="" fill sizes="100vw" />
         <div className={styles.nextStepOverlay} />
         <div className={styles.nextStepContent}>
           <p className={styles.eyebrow}>La vostra estada</p>
