@@ -1,3 +1,42 @@
+export interface AdminPropertyContent {
+  property_id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  bedrooms: number;
+  bathrooms: number;
+  amenities: string[];
+  check_in_time: string;
+  check_out_time: string;
+  published: boolean;
+}
+
+export type MediaCategory = "exterior" | "interior" | "amenities" | "surroundings";
+
+export interface AdminPropertyMedia {
+  id: string;
+  property_id: number;
+  storage_path: string;
+  category: MediaCategory;
+  alt_text: string;
+  caption: string | null;
+  sort_order: number;
+  published: boolean;
+}
+
+export interface AdminReview {
+  id: string;
+  property_id: number;
+  display_name: string;
+  rating: number;
+  comment: string;
+  source: string | null;
+  source_url: string | null;
+  stay_month: string | null;
+  published: boolean;
+  published_at: string | null;
+}
+
 export interface AdminProperty {
   id: number;
   max_guests: number;

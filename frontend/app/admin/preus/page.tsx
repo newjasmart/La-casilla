@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import useSWR from "swr";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { RequireStaff } from "@/components/admin/require-staff";
+import { supabaseErrorMessage } from "@/lib/admin-errors";
 import { parseDateRange, toDateRange } from "@/lib/daterange";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { AdminProperty, FeeRule, RatePeriod } from "@/types/admin";
@@ -18,14 +19,6 @@ export default function AdminPricingPage() {
       </AdminShell>
     </RequireStaff>
   );
-}
-
-function supabaseErrorMessage(error: unknown): string {
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message) return message;
-  }
-  return "No s’ha pogut desar el canvi.";
 }
 
 interface PricingData {

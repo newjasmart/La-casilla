@@ -5,6 +5,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { RequireStaff } from "@/components/admin/require-staff";
+import { supabaseErrorMessage } from "@/lib/admin-errors";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { AdminReservation, ReservationStatus } from "@/types/admin";
 import styles from "@/app/admin/admin.module.css";
@@ -32,14 +33,6 @@ const FILTERS: { value: ReservationStatus | "all"; label: string }[] = [
   { value: "expired", label: "Expirades" },
   { value: "all", label: "Totes" },
 ];
-
-function supabaseErrorMessage(error: unknown): string {
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message) return message;
-  }
-  return "No s’ha pogut desar el canvi.";
-}
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("ca-ES", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })

@@ -1,4 +1,4 @@
-import { getSupabasePublicConfig } from "@/lib/env";
+import { publicMediaUrl } from "@/lib/media";
 import { supabaseFetch } from "@/lib/supabase";
 import type {
   HomeData,
@@ -52,17 +52,6 @@ const REVIEW_SELECT = [
   "stay_month",
   "published_at",
 ].join(",");
-
-function publicMediaUrl(storagePath: string): string {
-  const { url } = getSupabasePublicConfig();
-  const encodedPath = storagePath
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-
-  return `${url}/storage/v1/object/public/property-media/${encodedPath}`;
-}
 
 export async function getHomeData(): Promise<HomeData> {
   const properties = await supabaseFetch<PropertyRow[]>(

@@ -21,14 +21,18 @@ export default function AdminHomePage() {
             Reserves
             <span>Consultar, confirmar o cancel·lar sol·licituds.</span>
           </Link>
-          <span className={styles.dashboardCardDisabled}>
-            Contingut i fotos
-            <span>Properament.</span>
-          </span>
-          <span className={styles.dashboardCardDisabled}>
+          <Link className={styles.dashboardCard} href="/admin/contingut">
+            Contingut
+            <span>Text, equipaments i horaris de la pàgina pública.</span>
+          </Link>
+          <Link className={styles.dashboardCard} href="/admin/fotos">
+            Fotos
+            <span>Pujar, publicar i ordenar les imatges.</span>
+          </Link>
+          <Link className={styles.dashboardCard} href="/admin/ressenyes">
             Ressenyes
-            <span>Properament.</span>
-          </span>
+            <span>Afegir i publicar els comentaris dels hostes.</span>
+          </Link>
         </nav>
       </AdminShell>
     </RequireStaff>
