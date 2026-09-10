@@ -1,4 +1,6 @@
 import Image from "next/image";
+import { useLocale, useTranslations } from "next-intl";
+import { getLocale, getTranslations } from "next-intl/server";
 import { connection } from "next/server";
 import { BookingFlow } from "@/components/booking-flow";
 import { ContactForm } from "@/components/contact-form";
@@ -14,64 +16,51 @@ import styles from "@/app/page.module.css";
 
 const LOCAL_HERO = "/images/la-casilla/entrada-casilla.webp";
 
-const LOCAL_GALLERY = [
-  {
-    src: "/images/la-casilla/cuina.webp",
-    alt: "Cuina totalment equipada de La Casilla",
-    caption: "Cuina pensada per cuinar en grup",
-  },
-  {
-    src: "/images/la-casilla/sala-estar.webp",
-    alt: "Sala d’estar amb llar de foc de La Casilla",
-    caption: "Calma i confort",
-  },
-  {
-    src: "/images/la-casilla/piscina-capvespre.webp",
-    alt: "Piscina de La Casilla al capvespre",
-    caption: "Capvespres a la piscina",
-  },
-  {
-    src: "/images/la-casilla/bany-principal.webp",
-    alt: "Bany principal de La Casilla",
-    caption: "Banys moderns i lluminosos",
-  },
-  {
-    src: "/images/la-casilla/bany-secundari.webp",
-    alt: "Bany secundari amb detalls de fusta",
-    caption: "Materials amb ànima",
-  },
-  {
-    src: "/images/la-casilla/detall-fusta.webp",
-    alt: "Detall de fusta natural al capçal d’una habitació",
-    caption: "Detalls amb caràcter",
-  },
-] as const;
+const INTL_LOCALES: Record<string, string> = {
+  ca: "ca-ES",
+  es: "es-ES",
+  en: "en-GB",
+  nl: "nl-NL",
+  fr: "fr-FR",
+};
 
-function plural(value: number, singular: string, pluralForm: string): string {
-  return `${value} ${value === 1 ? singular : pluralForm}`;
-}
-
-function formatPrice(property: PropertyRow): string {
-  return new Intl.NumberFormat("ca-ES", {
+function formatPrice(property: PropertyRow, locale: string): string {
+  return new Intl.NumberFormat(INTL_LOCALES[locale] ?? locale, {
     style: "currency",
     currency: property.currency,
     maximumFractionDigits: 0,
   }).format(property.base_nightly_price);
 }
 
-function formatTime(value: string): string {
-  return `${value.slice(0, 5).replace(":", ".")} h`;
+function formatTime(value: string, locale: string): string {
+  const [hours, minutes] = value.split(":");
+  const date = new Date(Date.UTC(2000, 0, 1, Number(hours), Number(minutes)));
+  return new Intl.DateTimeFormat(INTL_LOCALES[locale] ?? locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(date);
 }
 
-function formatAmenity(value: string): string {
+function fallbackLabel(value: string): string {
   const label = value.replaceAll("_", " ").trim();
   return label ? `${label.charAt(0).toUpperCase()}${label.slice(1)}` : value;
 }
 
-function reviewDate(value: string | null): string | null {
+/**
+ * Returns the locale-specific override for guest-facing free text (property
+ * description, review comments) when the owner/guest provided one, falling
+ * back to whatever was originally written otherwise. Never throws on an
+ * unknown or missing locale.
+ */
+function localizedText(canonical: string, translations: Record<string, string>, locale: string): string {
+  return translations[locale]?.trim() || canonical;
+}
+
+function reviewDate(value: string | null, locale: string): string | null {
   if (!value) return null;
 
-  return new Intl.DateTimeFormat("ca-ES", {
+  return new Intl.DateTimeFormat(INTL_LOCALES[locale] ?? locale, {
     month: "long",
     year: "numeric",
     timeZone: "UTC",
@@ -85,12 +74,16 @@ function PropertyOverview({
   property: PropertyRow | null;
   content: PropertyContentRow | null;
 }) {
+  const t = useTranslations("Discovery");
+  const amenitiesT = useTranslations("Amenities");
+  const locale = useLocale();
+
   const facts = property && content
     ? [
-        { label: "Capacitat", value: plural(property.max_guests, "hoste", "hostes") },
-        { label: "Habitacions", value: plural(content.bedrooms, "habitació", "habitacions") },
-        { label: "Banys", value: plural(content.bathrooms, "bany", "banys") },
-        { label: "Des de", value: `${formatPrice(property)} / nit` },
+        { label: t("factCapacity"), value: t("guest", { count: property.max_guests }) },
+        { label: t("factBedrooms"), value: t("bedroom", { count: content.bedrooms }) },
+        { label: t("factBathrooms"), value: t("bathroom", { count: content.bathrooms }) },
+        { label: t("factFrom"), value: t("perNight", { price: formatPrice(property, locale) }) },
       ]
     : [];
 
@@ -98,17 +91,14 @@ function PropertyOverview({
     <section className={styles.discovery} id="descobrir" aria-labelledby="discovery-title">
       <div className={styles.storyGrid}>
         <div className={styles.storyCopy}>
-          <p className={styles.eyebrow}>La casa sencera per al vostre grup</p>
-          <h2 id="discovery-title">Un espai privat per compartir al vostre ritme.</h2>
-          <p>
-            Veniu amb la família, les amistats o el grup ciclista. Pedra, llum i natura
-            conviuen en una casa que serà només vostra durant tota l’estada.
-          </p>
+          <p className={styles.eyebrow}>{t("eyebrow")}</p>
+          <h2 id="discovery-title">{t("title")}</h2>
+          <p>{t("body")}</p>
         </div>
         <div className={styles.storyImage}>
           <Image
             src="/images/la-casilla/vista-aeria-piscina.webp"
-            alt="Vista aèria de La Casilla amb la piscina i el jardí"
+            alt={t("heroImageAlt")}
             fill
             sizes="(max-width: 860px) 100vw, 50vw"
           />
@@ -127,23 +117,23 @@ function PropertyOverview({
           </div>
           <div className={styles.stayDetails}>
             <p>
-              Arribada a partir de <strong>{formatTime(content.check_in_time)}</strong>
+              {t("checkInFrom")} <strong>{formatTime(content.check_in_time, locale)}</strong>
             </p>
             <p>
-              Sortida abans de <strong>{formatTime(content.check_out_time)}</strong>
+              {t("checkOutBefore")} <strong>{formatTime(content.check_out_time, locale)}</strong>
             </p>
             <p>
-              Estada mínima: <strong>{plural(property.base_minimum_nights, "nit", "nits")}</strong>
+              {t("minStay")} <strong>{t("night", { count: property.base_minimum_nights })}</strong>
             </p>
           </div>
         </>
       )}
       {content && content.amenities.length > 0 && (
         <div className={styles.amenities}>
-          <h3>Equipaments</h3>
+          <h3>{t("amenitiesTitle")}</h3>
           <ul>
             {content.amenities.map((amenity) => (
-              <li key={amenity}>{formatAmenity(amenity)}</li>
+              <li key={amenity}>{amenitiesT.has(amenity) ? amenitiesT(amenity) : fallbackLabel(amenity)}</li>
             ))}
           </ul>
         </div>
@@ -153,46 +143,47 @@ function PropertyOverview({
 }
 
 function OutdoorMoment() {
+  const t = useTranslations("Outdoor");
+
   return (
     <section className={styles.immersive} aria-labelledby="outdoor-title">
       <Image src="/images/la-casilla/jardi-terrassa.webp" alt="" fill sizes="100vw" />
       <div className={styles.immersiveOverlay} />
       <div className={styles.immersiveContent}>
-        <p className={styles.eyebrow}>A l’aire lliure</p>
-        <h2 id="outdoor-title">Dies sense presses, envoltats de natura.</h2>
-        <p>
-          Esmorzars llargs, sobretaules al jardí i capvespres que conviden a quedar-s’hi una
-          estona més.
-        </p>
+        <p className={styles.eyebrow}>{t("eyebrow")}</p>
+        <h2 id="outdoor-title">{t("title")}</h2>
+        <p>{t("body")}</p>
       </div>
     </section>
   );
 }
 
 function Rooms() {
+  const t = useTranslations("Rooms");
+
   const rooms = [
     {
       src: "/images/la-casilla/habitacio-jardi.webp",
-      alt: "Habitació amb accés directe al jardí",
-      caption: "Llum natural",
+      alt: t("gardenAlt"),
+      caption: t("gardenCaption"),
     },
     {
       src: "/images/la-casilla/habitacio-muntanya.webp",
-      alt: "Habitació amb terrassa i vistes a la muntanya",
-      caption: "Vistes a la muntanya",
+      alt: t("mountainAlt"),
+      caption: t("mountainCaption"),
     },
     {
       src: "/images/la-casilla/habitacio-lliteres.webp",
-      alt: "Habitació amb lliteres per a grups",
-      caption: "Per a tota la colla",
+      alt: t("bunkAlt"),
+      caption: t("bunkCaption"),
     },
   ] as const;
 
   return (
     <section className={styles.dataSection} aria-labelledby="rooms-title">
       <div className={styles.sectionHeading}>
-        <p className={styles.eyebrow}>Descans</p>
-        <h2 id="rooms-title">Espais per sentir-vos com a casa.</h2>
+        <p className={styles.eyebrow}>{t("eyebrow")}</p>
+        <h2 id="rooms-title">{t("title")}</h2>
       </div>
       <div className={styles.roomGrid}>
         {rooms.map((room, index) => (
@@ -207,11 +198,22 @@ function Rooms() {
 }
 
 function MediaGallery({ media }: { media: PublicPropertyMedia[] }) {
+  const t = useTranslations("Gallery");
+
+  const localGallery = [
+    { src: "/images/la-casilla/cuina.webp", alt: t("kitchenAlt"), caption: t("kitchenCaption") },
+    { src: "/images/la-casilla/sala-estar.webp", alt: t("livingAlt"), caption: t("livingCaption") },
+    { src: "/images/la-casilla/piscina-capvespre.webp", alt: t("poolAlt"), caption: t("poolCaption") },
+    { src: "/images/la-casilla/bany-principal.webp", alt: t("bathroomMainAlt"), caption: t("bathroomMainCaption") },
+    { src: "/images/la-casilla/bany-secundari.webp", alt: t("bathroomSecondaryAlt"), caption: t("bathroomSecondaryCaption") },
+    { src: "/images/la-casilla/detall-fusta.webp", alt: t("woodDetailAlt"), caption: t("woodDetailCaption") },
+  ] as const;
+
   return (
     <section className={styles.dataSection} id="fotos" aria-labelledby="media-title">
       <div className={styles.sectionHeading}>
-        <p className={styles.eyebrow}>En imatges</p>
-        <h2 id="media-title">La casa, des de tots els angles.</h2>
+        <p className={styles.eyebrow}>{t("eyebrow")}</p>
+        <h2 id="media-title">{t("title")}</h2>
       </div>
       <div className={styles.mediaGrid}>
         {media.length > 0
@@ -226,7 +228,7 @@ function MediaGallery({ media }: { media: PublicPropertyMedia[] }) {
                 {item.caption && <figcaption>{item.caption}</figcaption>}
               </figure>
             ))
-          : LOCAL_GALLERY.map((item) => (
+          : localGallery.map((item) => (
               <figure className={styles.mediaCard} key={item.src}>
                 <div className={styles.mediaImageFrame}>
                   <Image src={item.src} alt={item.alt} fill sizes="(max-width: 680px) 100vw, 50vw" />
@@ -239,11 +241,11 @@ function MediaGallery({ media }: { media: PublicPropertyMedia[] }) {
   );
 }
 
-function Rating({ value }: { value: number }) {
+function Rating({ value, ariaLabel }: { value: number; ariaLabel: string }) {
   const normalized = Math.max(0, Math.min(5, Math.round(value)));
 
   return (
-    <span className={styles.rating} role="img" aria-label={`${normalized} estrelles de 5`}>
+    <span className={styles.rating} role="img" aria-label={ariaLabel}>
       {"★".repeat(normalized)}
       <span aria-hidden="true">{"☆".repeat(5 - normalized)}</span>
     </span>
@@ -251,20 +253,24 @@ function Rating({ value }: { value: number }) {
 }
 
 function Reviews({ reviews }: { reviews: ReviewRow[] }) {
+  const t = useTranslations("Reviews");
+  const locale = useLocale();
+
   return (
     <section className={styles.dataSection} aria-labelledby="reviews-title">
       <div className={styles.sectionHeading}>
-        <p className={styles.eyebrow}>Han estat aquí</p>
-        <h2 id="reviews-title">Records que es comparteixen.</h2>
+        <p className={styles.eyebrow}>{t("eyebrow")}</p>
+        <h2 id="reviews-title">{t("title")}</h2>
       </div>
       {reviews.length > 0 ? (
         <div className={styles.reviewGrid}>
           {reviews.map((review) => {
-            const date = reviewDate(review.stay_month);
+            const date = reviewDate(review.stay_month, locale);
+            const comment = localizedText(review.comment, review.comment_translations, locale);
             return (
               <article className={styles.review} key={review.id}>
-                <Rating value={review.rating} />
-                <blockquote>“{review.comment}”</blockquote>
+                <Rating value={review.rating} ariaLabel={t("ratingAria", { count: review.rating })} />
+                <blockquote>“{comment}”</blockquote>
                 <footer>
                   <strong>{review.display_name}</strong>
                   {(date || review.source) && (
@@ -276,15 +282,17 @@ function Reviews({ reviews }: { reviews: ReviewRow[] }) {
           })}
         </div>
       ) : (
-        <p className={styles.inlineEmpty}>Encara no hi ha cap ressenya publicada.</p>
+        <p className={styles.inlineEmpty}>{t("empty")}</p>
       )}
     </section>
   );
 }
 
 export function HomeLoading() {
+  const t = useTranslations("Loading");
+
   return (
-    <section className={styles.loadingPanel} aria-busy="true" aria-label="Carregant La Casilla">
+    <section className={styles.loadingPanel} aria-busy="true" aria-label={t("aria")}>
       <div className={styles.loadingContent}>
         <span className={styles.loadingLine} />
         <span className={styles.loadingTitle} />
@@ -317,9 +325,13 @@ export async function HomeContent() {
   const { data, failed } = await loadHomeData();
   const { property, content, media, reviews } = data;
   const heroMedia = media[0];
-  const title = content?.name ?? "La Casilla";
-  const description = content?.description
-    ?? "Una casa acollidora per aturar-vos, retrobar-vos i gaudir del moment.";
+  const locale = await getLocale();
+  const t = await getTranslations("Hero");
+  const dataNoticeT = await getTranslations("DataNotice");
+  const title = content?.name ?? t("defaultTitle");
+  const description = content
+    ? localizedText(content.description ?? "", content.description_translations, locale) || t("defaultDescription")
+    : t("defaultDescription");
   const limitedData = failed || !property || !content;
 
   return (
@@ -337,21 +349,19 @@ export async function HomeContent() {
         </div>
         <div className={styles.heroOverlay} />
         <div className={styles.heroContent}>
-          <p className={styles.eyebrow}>Casa sencera · Natura · Calma</p>
+          <p className={styles.eyebrow}>{t("eyebrow")}</p>
           <h1 id="hero-title">{title}</h1>
           <p className={styles.lead}>{description}</p>
           <div className={styles.heroActions}>
-            <a className={styles.primaryAction} href="#reserva">Consulta disponibilitat</a>
-            <a className={styles.secondaryAction} href="#descobrir">Descobriu la casa</a>
+            <a className={styles.primaryAction} href="#reserva">{t("checkAvailability")}</a>
+            <a className={styles.secondaryAction} href="#descobrir">{t("discoverHouse")}</a>
           </div>
         </div>
       </section>
 
       {limitedData && (
         <p className={styles.dataNotice} role="status">
-          {failed
-            ? "Algunes dades de la casa no estan disponibles ara mateix. Les tornarem a mostrar tan aviat com sigui possible."
-            : "Estem acabant de preparar la informació detallada de la casa."}
+          {failed ? dataNoticeT("failed") : dataNoticeT("incomplete")}
         </p>
       )}
 
@@ -367,21 +377,26 @@ export async function HomeContent() {
       />
       <Reviews reviews={reviews} />
 
-      <section className={styles.nextStep} aria-labelledby="next-step-title">
-        <Image src="/images/la-casilla/camps-entorn.webp" alt="" fill sizes="100vw" />
-        <div className={styles.nextStepOverlay} />
-        <div className={styles.nextStepContent}>
-          <p className={styles.eyebrow}>La vostra estada</p>
-          <h2 id="next-step-title">La casa, la colla i les bicicletes.</h2>
-          <p>
-            Un punt de partida per pedalar per la regió i un espai privat on descansar,
-            cuinar i compartir el final de cada jornada.
-          </p>
-          <a className={styles.nextStepAction} href="#reserva">Consulta les vostres dates</a>
-        </div>
-      </section>
+      <NextStep />
 
       <ContactForm />
     </>
+  );
+}
+
+async function NextStep() {
+  const t = await getTranslations("NextStep");
+
+  return (
+    <section className={styles.nextStep} aria-labelledby="next-step-title">
+      <Image src="/images/la-casilla/camps-entorn.webp" alt="" fill sizes="100vw" />
+      <div className={styles.nextStepOverlay} />
+      <div className={styles.nextStepContent}>
+        <p className={styles.eyebrow}>{t("eyebrow")}</p>
+        <h2 id="next-step-title">{t("title")}</h2>
+        <p>{t("body")}</p>
+        <a className={styles.nextStepAction} href="#reserva">{t("cta")}</a>
+      </div>
+    </section>
   );
 }

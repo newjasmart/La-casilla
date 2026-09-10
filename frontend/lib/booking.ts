@@ -32,6 +32,7 @@ export interface ReservationRequest extends StaySelection {
   message: string;
   privacyAccepted: boolean;
   website: string;
+  locale: string;
 }
 
 export interface ReservationResponse {
@@ -40,6 +41,15 @@ export interface ReservationResponse {
   status?: string;
   warning?: string;
   error?: string;
+}
+
+export type ReservationErrorCode = "conflict" | "rateLimited" | "forbidden" | "validation" | "sendFailed";
+
+export class ReservationRequestError extends Error {
+  constructor(readonly code: ReservationErrorCode, message: string) {
+    super(message);
+    this.name = "ReservationRequestError";
+  }
 }
 
 function rpcBody(selection: StaySelection): string {
@@ -64,19 +74,16 @@ export function createReservationKey(): string {
   return `reservation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function backendMessage(payload: unknown, fallback: string): string {
-  if (!payload || typeof payload !== "object") return fallback;
-  const error = Reflect.get(payload, "error");
-  return typeof error === "string" && error.trim() ? error : fallback;
-}
-
-function reservationError(status: number, payload: unknown): string {
-  const message = backendMessage(payload, "");
-  if (status === 409) return "Aquestes dates ja no estan disponibles. Consulteu-ne unes altres.";
-  if (status === 429) return "Heu fet massa intents. Espereu una estona abans de tornar-ho a provar.";
-  if (status === 403) return "No s’ha pogut validar l’origen de la sol·licitud.";
-  if (status === 400) return message || "Reviseu les dades del formulari.";
-  return "No s’ha pogut enviar la sol·licitud de reserva.";
+function reservationError(status: number, payload: unknown): ReservationRequestError {
+  const backendText = payload && typeof payload === "object"
+    ? Reflect.get(payload, "error")
+    : undefined;
+  const detail = typeof backendText === "string" ? backendText : "";
+  if (status === 409) return new ReservationRequestError("conflict", detail);
+  if (status === 429) return new ReservationRequestError("rateLimited", detail);
+  if (status === 403) return new ReservationRequestError("forbidden", detail);
+  if (status === 400) return new ReservationRequestError("validation", detail);
+  return new ReservationRequestError("sendFailed", detail);
 }
 
 export async function sendReservationRequest(
@@ -104,7 +111,7 @@ export async function sendReservationRequest(
       infants: input.children,
       bebes: input.infants,
       comentaris: input.message || undefined,
-      locale: "ca",
+      locale: input.locale,
       privacy_notice_accepted: input.privacyAccepted,
       website: input.website,
     }),
@@ -112,7 +119,7 @@ export async function sendReservationRequest(
 
   const payload = await response.json().catch(() => null) as ReservationResponse | null;
   if (!response.ok) {
-    throw new Error(reservationError(response.status, payload));
+    throw reservationError(response.status, payload);
   }
 
   return payload ?? { ok: true };

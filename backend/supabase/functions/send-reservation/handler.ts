@@ -148,6 +148,7 @@ export function createReservationHandler(deps: ReservationDependencies) {
       data_arribada: body.data_arribada!, data_sortida: body.data_sortida!,
       adults: body.adults!, infants: body.infants, bebes: body.bebes,
       reference: reservation.reference, comentaris: body.comentaris,
+      locale: body.locale,
     };
 
     try {

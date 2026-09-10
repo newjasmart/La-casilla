@@ -1,8 +1,13 @@
+/** Non-default languages the site offers, matching frontend/i18n/routing.ts minus the default (ca). */
+export const TRANSLATABLE_LOCALES = ["es", "en", "nl", "fr"] as const;
+export type TranslatableLocale = (typeof TRANSLATABLE_LOCALES)[number];
+
 export interface AdminPropertyContent {
   property_id: number;
   name: string;
   slug: string;
   description: string | null;
+  description_translations: Partial<Record<TranslatableLocale, string>>;
   bedrooms: number;
   bathrooms: number;
   amenities: string[];
@@ -30,6 +35,7 @@ export interface AdminReview {
   display_name: string;
   rating: number;
   comment: string;
+  comment_translations: Partial<Record<TranslatableLocale, string>>;
   source: string | null;
   source_url: string | null;
   stay_month: string | null;

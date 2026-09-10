@@ -1,18 +1,22 @@
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { Link } from "@/i18n/navigation";
 import styles from "./site-shell.module.css";
 
-const navigation = [
-  { label: "La casa", href: "#descobrir" },
-  { label: "Fotos", href: "#fotos" },
-  { label: "Disponibilitat", href: "#reserva" },
-  { label: "Contacte", href: "#contacte" },
-] as const;
-
 export function SiteHeader() {
+  const t = useTranslations("Nav");
+
+  const navigation = [
+    { label: t("home"), href: "#descobrir" },
+    { label: t("photos"), href: "#fotos" },
+    { label: t("availability"), href: "#reserva" },
+    { label: t("contact"), href: "#contacte" },
+  ] as const;
+
   return (
     <header className={styles.header}>
       <div className={styles.headerInner}>
-        <Link className={styles.brand} href="/" aria-label="La Casilla, inici">
+        <Link className={styles.brand} href="/" aria-label={t("brandAria")}>
           La Casilla
         </Link>
         <nav aria-label="Navegació principal">
@@ -25,7 +29,10 @@ export function SiteHeader() {
               </li>
             ))}
             <li>
-              <Link className={styles.bookingLink} href="/#reserva">Reservar</Link>
+              <Link className={styles.bookingLink} href="/#reserva">{t("book")}</Link>
+            </li>
+            <li>
+              <LanguageSwitcher />
             </li>
           </ul>
         </nav>

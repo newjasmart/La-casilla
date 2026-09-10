@@ -8,6 +8,7 @@ export interface ContactRequest {
   message: string;
   privacyAccepted: boolean;
   website: string;
+  locale: string;
 }
 
 export interface ContactResponse {
@@ -16,24 +17,30 @@ export interface ContactResponse {
   error?: string;
 }
 
+export type ContactErrorCode = "conflict" | "rateLimited" | "forbidden" | "validation" | "sendFailed";
+
+export class ContactRequestError extends Error {
+  constructor(readonly code: ContactErrorCode, message: string) {
+    super(message);
+    this.name = "ContactRequestError";
+  }
+}
+
 export function createContactRequestKey(): string {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return `contact-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function backendMessage(payload: unknown, fallback: string): string {
-  if (!payload || typeof payload !== "object") return fallback;
-  const error = Reflect.get(payload, "error");
-  return typeof error === "string" && error.trim() ? error : fallback;
-}
-
-function contactError(status: number, payload: unknown): string {
-  const message = backendMessage(payload, "");
-  if (status === 429) return "Heu fet massa intents. Espereu una estona abans de tornar-ho a provar.";
-  if (status === 403) return "No s’ha pogut validar l’origen de la sol·licitud.";
-  if (status === 409) return "Ja s’està processant aquest missatge. Espereu un moment.";
-  if (status === 400) return message || "Reviseu les dades del formulari.";
-  return "No s’ha pogut enviar el missatge. Torneu-ho a provar d’aquí a uns instants.";
+function contactError(status: number, payload: unknown): ContactRequestError {
+  const backendText = payload && typeof payload === "object"
+    ? Reflect.get(payload, "error")
+    : undefined;
+  const detail = typeof backendText === "string" ? backendText : "";
+  if (status === 429) return new ContactRequestError("rateLimited", detail);
+  if (status === 403) return new ContactRequestError("forbidden", detail);
+  if (status === 409) return new ContactRequestError("conflict", detail);
+  if (status === 400) return new ContactRequestError("validation", detail);
+  return new ContactRequestError("sendFailed", detail);
 }
 
 export async function sendContactRequest(
@@ -56,7 +63,7 @@ export async function sendContactRequest(
       telefon: input.phone || undefined,
       assumpte: input.subject || undefined,
       missatge: input.message,
-      locale: "ca",
+      locale: input.locale,
       privacy_notice_accepted: input.privacyAccepted,
       website: input.website,
     }),
@@ -64,7 +71,7 @@ export async function sendContactRequest(
 
   const payload = await response.json().catch(() => null) as ContactResponse | null;
   if (!response.ok) {
-    throw new Error(contactError(response.status, payload));
+    throw contactError(response.status, payload);
   }
 
   return payload ?? { ok: true };

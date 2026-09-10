@@ -14,6 +14,7 @@ export interface PropertyContentRow {
   name: string;
   slug: string;
   description: string | null;
+  description_translations: Record<string, string>;
   bedrooms: number;
   bathrooms: number;
   amenities: string[];
@@ -43,6 +44,7 @@ export interface ReviewRow {
   display_name: string;
   rating: number;
   comment: string;
+  comment_translations: Record<string, string>;
   source: string | null;
   stay_month: string | null;
   published_at: string;

@@ -6,10 +6,11 @@ const migrationsDir = new URL("../supabase/migrations/", import.meta.url);
 
 async function baseline(): Promise<string> {
   const files = (await readdir(migrationsDir)).filter((name) => name.endsWith(".sql")).sort();
-  assert.equal(files.length, 6);
+  assert.equal(files.length, 9);
   assert.deepEqual(files.map((name) => name.match(/(\d{14})/)?.[1]), [
     "20260610000001", "20260610000002", "20260610000003",
     "20260610000004", "20260610000005", "20260610000006",
+    "20260610000007", "20260610000008", "20260610000009",
   ]);
   return Promise.all(files.map(async (name) => readFile(new URL(name, migrationsDir), "utf8")))
     .then((parts) => parts.join("\n"));

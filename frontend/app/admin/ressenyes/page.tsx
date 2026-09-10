@@ -7,8 +7,15 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { RequireStaff } from "@/components/admin/require-staff";
 import { supabaseErrorMessage } from "@/lib/admin-errors";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import type { AdminReview } from "@/types/admin";
+import { TRANSLATABLE_LOCALES, type AdminReview, type TranslatableLocale } from "@/types/admin";
 import styles from "@/app/admin/admin.module.css";
+
+const LOCALE_LABELS: Record<TranslatableLocale, string> = {
+  es: "Castellà (es)",
+  en: "Anglès (en)",
+  nl: "Neerlandès (nl)",
+  fr: "Francès (fr)",
+};
 
 export default function AdminReviewsPage() {
   return (
@@ -57,6 +64,7 @@ interface ReviewDraft {
   display_name: string;
   rating: string;
   comment: string;
+  comment_translations: Partial<Record<TranslatableLocale, string>>;
   source: string;
   source_url: string;
   stay_month: string;
@@ -68,6 +76,7 @@ function toDraft(row: AdminReview): ReviewDraft {
     display_name: row.display_name,
     rating: String(row.rating),
     comment: row.comment,
+    comment_translations: row.comment_translations ?? {},
     source: row.source ?? "",
     source_url: row.source_url ?? "",
     stay_month: row.stay_month ? row.stay_month.slice(0, 7) : "",
@@ -85,6 +94,7 @@ function ReviewsList({
   const [drafts, setDrafts] = useState<Record<string, ReviewDraft>>({});
   const [rowError, setRowError] = useState<Record<string, string>>({});
   const [rowBusy, setRowBusy] = useState<Record<string, boolean>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   function draftFor(row: AdminReview): ReviewDraft {
     return drafts[row.id] ?? toDraft(row);
@@ -106,12 +116,19 @@ function ReviewsList({
       ? (wasPublished ? row.published_at : new Date().toISOString())
       : null;
 
+    const cleanedTranslations = Object.fromEntries(
+      Object.entries(draft.comment_translations)
+        .map(([locale, text]) => [locale, text?.trim() ?? ""])
+        .filter(([, text]) => text),
+    );
+
     const { error } = await getSupabaseBrowserClient()
       .from("reviews")
       .update({
         display_name: draft.display_name,
         rating: Number(draft.rating),
         comment: draft.comment,
+        comment_translations: cleanedTranslations,
         source: draft.source.trim() || null,
         source_url: draft.source_url.trim() || null,
         stay_month: draft.stay_month ? `${draft.stay_month}-01` : null,
@@ -179,6 +196,13 @@ function ReviewsList({
                         <button type="button" className={styles.secondaryButton} disabled={rowBusy[row.id]} onClick={() => saveRow(row)}>
                           {rowBusy[row.id] ? "Desant…" : "Desa"}
                         </button>
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => setExpandedId((current) => (current === row.id ? null : row.id))}
+                        >
+                          {expandedId === row.id ? "Amaga traduccions" : "Traduccions"}
+                        </button>
                         <button type="button" className={styles.dangerButton} onClick={() => deleteRow(row.id)}>Elimina</button>
                       </div>
                       {rowError[row.id] && <p className={styles.error} role="alert">{rowError[row.id]}</p>}
@@ -186,6 +210,32 @@ function ReviewsList({
                   </tr>
                 );
               })}
+              {expandedId && reviews.some((row) => row.id === expandedId) && (
+                <tr>
+                  <td colSpan={7}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "10px 0" }}>
+                      <p className={styles.sectionHint}>
+                        Opcional. Si deixeu un idioma en blanc, aquest idioma mostrarà el comentari
+                        en català.
+                      </p>
+                      {TRANSLATABLE_LOCALES.map((locale) => (
+                        <label key={locale}>{LOCALE_LABELS[locale]}
+                          <textarea
+                            rows={2}
+                            value={draftFor(reviews.find((r) => r.id === expandedId)!).comment_translations[locale] ?? ""}
+                            onChange={(e) => updateDraft(expandedId, {
+                              comment_translations: {
+                                ...draftFor(reviews.find((r) => r.id === expandedId)!).comment_translations,
+                                [locale]: e.target.value,
+                              },
+                            })}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              )}
               {reviews.length === 0 && (
                 <tr><td colSpan={7} style={{ color: "var(--color-muted)" }}>Encara no hi ha cap ressenya.</td></tr>
               )}

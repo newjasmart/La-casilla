@@ -1,0 +1,80 @@
+"use client";
+
+import { useLocale, useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { routing } from "@/i18n/routing";
+import styles from "./site-shell.module.css";
+
+const LOCALE_LABELS: Record<string, string> = {
+  ca: "Català",
+  es: "Español",
+  en: "English",
+  nl: "Nederlands",
+  fr: "Français",
+};
+
+export function LanguageSwitcher() {
+  const t = useTranslations("Nav");
+  const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useParams();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  function selectLocale(nextLocale: string) {
+    setOpen(false);
+    router.replace(
+      // @ts-expect-error -- pathname is typed against the known routes, but
+      // here it's whatever the current URL happens to be.
+      { pathname, params },
+      { locale: nextLocale },
+    );
+  }
+
+  return (
+    <div className={styles.languageSwitcher} ref={containerRef}>
+      <button
+        type="button"
+        className={styles.languageButton}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={t("language")}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span aria-hidden="true">🌐</span>
+        <span className={styles.languageCode}>{locale.toUpperCase()}</span>
+      </button>
+      {open && (
+        <ul className={styles.languageMenu} role="listbox">
+          {routing.locales.map((item) => (
+            <li key={item}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={item === locale}
+                className={item === locale ? styles.languageOptionActive : styles.languageOption}
+                onClick={() => selectLocale(item)}
+              >
+                {LOCALE_LABELS[item]}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
