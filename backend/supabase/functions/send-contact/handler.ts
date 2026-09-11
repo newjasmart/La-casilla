@@ -58,73 +58,87 @@ function normalize(value: unknown) {
 
 export function createContactHandler(deps: ContactDependencies) {
   return async (request: Request): Promise<Response> => {
-    const origin = isAllowedOrigin(request, deps.config.allowedOrigins);
-    if (!origin) return jsonResponse({ error: "Origen no permès" }, 403);
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
-    if (request.method !== "POST") return jsonResponse({ error: "Mètode no permès" }, 405, origin);
-
-    const idempotencyKey = validateIdempotencyKey(request);
-    if (!idempotencyKey) {
-      return jsonResponse({ error: "Cal una capçalera Idempotency-Key vàlida (8-200 caràcters)" }, 400, origin);
-    }
-
-    let input: unknown;
+    // Safety net: anything thrown below this point that isn't already
+    // caught by a more specific try/catch (e.g. completeAndRespond writing
+    // the idempotency record) would otherwise reach Deno's default handler
+    // silently, with no entry in our logs and a raw, unstructured 500.
     try {
-      input = await request.json();
-    } catch {
-      return jsonResponse({ error: "Cos JSON no vàlid" }, 400, origin);
-    }
-    const body = normalize(input);
-    const errorValidacio = validar(body as ContacteInput);
-    if (errorValidacio && !body.website) return jsonResponse({ error: errorValidacio }, 400, origin);
-
-    let claim;
-    try {
-      claim = await claimFormRequest(request, "contact", idempotencyKey, body, deps.config, deps.store);
+      return await handleContactRequest(request, deps);
     } catch (error) {
-      deps.logError?.("Error aplicant proteccions de la petició", error);
-      return jsonResponse({ error: "No s'ha pogut processar la petició" }, 500, origin);
+      deps.logError?.("Error inesperat processant el missatge de contacte", error);
+      const origin = request.headers.get("origin") ?? undefined;
+      return jsonResponse({ error: "S'ha produït un error inesperat. Torneu-ho a provar d'aquí a uns instants." }, 500, origin);
     }
-    if (claim.response) return claim.response;
-
-    const finish = (responseBody: unknown, status = 200) =>
-      completeAndRespond(deps.store, "contact", claim.keyHash, claim.fingerprint, responseBody, status, origin);
-
-    if (body.website) return finish({ ok: true });
-
-    let contacte: unknown;
-    try {
-      contacte = await deps.store.insertContact({
-        name: body.nom,
-        email: body.email,
-        phone: body.telefon,
-        subject: body.assumpte,
-        message: body.missatge,
-        locale: body.locale,
-        privacy_notice_accepted_at: new Date().toISOString(),
-      });
-    } catch (error) {
-      deps.logError?.("Error desant el missatge", error);
-      return finish({ error: "No s'ha pogut desar el missatge" }, 500);
-    }
-
-    try {
-      const { subject, html } = emailPropietariContacte(body as ContacteInput, deps.config.casa);
-      await deps.sendEmail({
-        from: deps.config.casa.from,
-        to: deps.config.casa.owner,
-        subject,
-        html,
-        reply_to: body.email,
-      });
-    } catch (error) {
-      deps.logError?.("Error enviant el correu de contacte", error);
-      return finish({
-        ok: true,
-        warning: "Missatge desat però l'enviament del correu ha fallat",
-      });
-    }
-
-    return finish({ ok: true });
   };
+}
+
+async function handleContactRequest(request: Request, deps: ContactDependencies): Promise<Response> {
+  const origin = isAllowedOrigin(request, deps.config.allowedOrigins);
+  if (!origin) return jsonResponse({ error: "Origen no permès" }, 403);
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (request.method !== "POST") return jsonResponse({ error: "Mètode no permès" }, 405, origin);
+
+  const idempotencyKey = validateIdempotencyKey(request);
+  if (!idempotencyKey) {
+    return jsonResponse({ error: "Cal una capçalera Idempotency-Key vàlida (8-200 caràcters)" }, 400, origin);
+  }
+
+  let input: unknown;
+  try {
+    input = await request.json();
+  } catch {
+    return jsonResponse({ error: "Cos JSON no vàlid" }, 400, origin);
+  }
+  const body = normalize(input);
+  const errorValidacio = validar(body as ContacteInput);
+  if (errorValidacio && !body.website) return jsonResponse({ error: errorValidacio }, 400, origin);
+
+  let claim;
+  try {
+    claim = await claimFormRequest(request, "contact", idempotencyKey, body, deps.config, deps.store);
+  } catch (error) {
+    deps.logError?.("Error aplicant proteccions de la petició", error);
+    return jsonResponse({ error: "No s'ha pogut processar la petició" }, 500, origin);
+  }
+  if (claim.response) return claim.response;
+
+  const finish = (responseBody: unknown, status = 200) =>
+    completeAndRespond(deps.store, "contact", claim.keyHash, claim.fingerprint, responseBody, status, origin);
+
+  if (body.website) return finish({ ok: true });
+
+  let contacte: unknown;
+  try {
+    contacte = await deps.store.insertContact({
+      name: body.nom,
+      email: body.email,
+      phone: body.telefon,
+      subject: body.assumpte,
+      message: body.missatge,
+      locale: body.locale,
+      privacy_notice_accepted_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    deps.logError?.("Error desant el missatge", error);
+    return finish({ error: "No s'ha pogut desar el missatge" }, 500);
+  }
+
+  try {
+    const { subject, html } = emailPropietariContacte(body as ContacteInput, deps.config.casa);
+    await deps.sendEmail({
+      from: deps.config.casa.from,
+      to: deps.config.casa.owner,
+      subject,
+      html,
+      reply_to: body.email,
+    });
+  } catch (error) {
+    deps.logError?.("Error enviant el correu de contacte", error);
+    return finish({
+      ok: true,
+      warning: "Missatge desat però l'enviament del correu ha fallat",
+    });
+  }
+
+  return finish({ ok: true });
 }

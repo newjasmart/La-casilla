@@ -85,93 +85,107 @@ function normalize(value: unknown) {
 
 export function createReservationHandler(deps: ReservationDependencies) {
   return async (request: Request): Promise<Response> => {
-    const origin = isAllowedOrigin(request, deps.config.allowedOrigins);
-    if (!origin) return jsonResponse({ error: "Origen no permès" }, 403);
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
-    if (request.method !== "POST") return jsonResponse({ error: "Mètode no permès" }, 405, origin);
-
-    const idempotencyKey = validateIdempotencyKey(request);
-    if (!idempotencyKey) {
-      return jsonResponse({ error: "Cal una capçalera Idempotency-Key vàlida (8-200 caràcters)" }, 400, origin);
-    }
-
-    let input: unknown;
+    // Safety net: anything thrown below this point that isn't already
+    // caught by a more specific try/catch (e.g. completeAndRespond writing
+    // the idempotency record) would otherwise reach Deno's default handler
+    // silently, with no entry in our logs and a raw, unstructured 500.
     try {
-      input = await request.json();
-    } catch {
-      return jsonResponse({ error: "Cos JSON no vàlid" }, 400, origin);
-    }
-    const body = normalize(input);
-    const errorValidacio = validar(body as ReservaInput);
-    if (errorValidacio && !body.website) return jsonResponse({ error: errorValidacio }, 400, origin);
-
-    let claim;
-    try {
-      claim = await claimFormRequest(request, "reservation", idempotencyKey, body, deps.config, deps.store);
+      return await handleReservationRequest(request, deps);
     } catch (error) {
-      deps.logError?.("Error aplicant proteccions de la petició", error);
-      return jsonResponse({ error: "No s'ha pogut processar la petició" }, 500, origin);
+      deps.logError?.("Error inesperat processant la sol·licitud de reserva", error);
+      const origin = request.headers.get("origin") ?? undefined;
+      return jsonResponse({ error: "S'ha produït un error inesperat. Torneu-ho a provar d'aquí a uns instants." }, 500, origin);
     }
-    if (claim.response) return claim.response;
-
-    const finish = (responseBody: unknown, status = 200) =>
-      completeAndRespond(deps.store, "reservation", claim.keyHash, claim.fingerprint, responseBody, status, origin);
-
-    if (body.website) return finish({ ok: true });
-
-    let reservation: { reference: string; status: string };
-    try {
-      reservation = await deps.store.createReservationRequest({
-        p_first_name: body.nom,
-        p_last_name: body.cognoms,
-        p_email: body.email,
-        p_phone: body.telefon,
-        p_arrival: body.data_arribada,
-        p_departure: body.data_sortida,
-        p_adults: body.adults,
-        p_children: body.infants,
-        p_infants: body.bebes,
-        p_guest_message: body.comentaris,
-        p_locale: body.locale,
-        p_privacy_notice_accepted_at: new Date().toISOString(),
-        p_source: "website",
-        p_external_reference: null,
-      });
-    } catch (error) {
-      deps.logError?.("Error creant la sol·licitud de reserva", error);
-      const unavailable = error instanceof Error && /STAY_NOT_AVAILABLE|23P01/.test(error.message);
-      return finish({ error: unavailable ? "La casa no està disponible en aquestes dates" : "No s'ha pogut crear la sol·licitud" }, unavailable ? 409 : 500);
-    }
-
-    const data = {
-      nom: body.nom!, cognoms: body.cognoms!, email: body.email!, telefon: body.telefon,
-      data_arribada: body.data_arribada!, data_sortida: body.data_sortida!,
-      adults: body.adults!, infants: body.infants, bebes: body.bebes,
-      reference: reservation.reference, comentaris: body.comentaris,
-      locale: body.locale,
-    };
-
-    try {
-      const client = emailClientReserva(data, deps.config.casa);
-      const owner = emailPropietariReserva(data, deps.config.casa);
-      await Promise.all([
-        deps.sendEmail({ from: deps.config.casa.from, to: body.email!, subject: client.subject, html: client.html }),
-        deps.sendEmail({
-          from: deps.config.casa.from, to: deps.config.casa.owner, subject: owner.subject,
-          html: owner.html, reply_to: body.email!,
-        }),
-      ]);
-    } catch (error) {
-      deps.logError?.("Error enviant els correus de reserva", error);
-      return finish({
-        ok: true,
-        reservation,
-        reference: reservation.reference,
-        status: reservation.status,
-        warning: "Sol·licitud creada però l'enviament del correu ha fallat",
-      });
-    }
-
-    return finish({ ok: true, reference: reservation.reference, status: reservation.status });
   };
+}
+
+async function handleReservationRequest(request: Request, deps: ReservationDependencies): Promise<Response> {
+  const origin = isAllowedOrigin(request, deps.config.allowedOrigins);
+  if (!origin) return jsonResponse({ error: "Origen no permès" }, 403);
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (request.method !== "POST") return jsonResponse({ error: "Mètode no permès" }, 405, origin);
+
+  const idempotencyKey = validateIdempotencyKey(request);
+  if (!idempotencyKey) {
+    return jsonResponse({ error: "Cal una capçalera Idempotency-Key vàlida (8-200 caràcters)" }, 400, origin);
+  }
+
+  let input: unknown;
+  try {
+    input = await request.json();
+  } catch {
+    return jsonResponse({ error: "Cos JSON no vàlid" }, 400, origin);
+  }
+  const body = normalize(input);
+  const errorValidacio = validar(body as ReservaInput);
+  if (errorValidacio && !body.website) return jsonResponse({ error: errorValidacio }, 400, origin);
+
+  let claim;
+  try {
+    claim = await claimFormRequest(request, "reservation", idempotencyKey, body, deps.config, deps.store);
+  } catch (error) {
+    deps.logError?.("Error aplicant proteccions de la petició", error);
+    return jsonResponse({ error: "No s'ha pogut processar la petició" }, 500, origin);
+  }
+  if (claim.response) return claim.response;
+
+  const finish = (responseBody: unknown, status = 200) =>
+    completeAndRespond(deps.store, "reservation", claim.keyHash, claim.fingerprint, responseBody, status, origin);
+
+  if (body.website) return finish({ ok: true });
+
+  let reservation: { reference: string; status: string };
+  try {
+    reservation = await deps.store.createReservationRequest({
+      p_first_name: body.nom,
+      p_last_name: body.cognoms,
+      p_email: body.email,
+      p_phone: body.telefon,
+      p_arrival: body.data_arribada,
+      p_departure: body.data_sortida,
+      p_adults: body.adults,
+      p_children: body.infants,
+      p_infants: body.bebes,
+      p_guest_message: body.comentaris,
+      p_locale: body.locale,
+      p_privacy_notice_accepted_at: new Date().toISOString(),
+      p_source: "website",
+      p_external_reference: null,
+    });
+  } catch (error) {
+    deps.logError?.("Error creant la sol·licitud de reserva", error);
+    const unavailable = error instanceof Error && /STAY_NOT_AVAILABLE|23P01/.test(error.message);
+    return finish({ error: unavailable ? "La casa no està disponible en aquestes dates" : "No s'ha pogut crear la sol·licitud" }, unavailable ? 409 : 500);
+  }
+
+  const data = {
+    nom: body.nom!, cognoms: body.cognoms!, email: body.email!, telefon: body.telefon,
+    data_arribada: body.data_arribada!, data_sortida: body.data_sortida!,
+    adults: body.adults!, infants: body.infants, bebes: body.bebes,
+    reference: reservation.reference, comentaris: body.comentaris,
+    locale: body.locale,
+  };
+
+  try {
+    const client = emailClientReserva(data, deps.config.casa);
+    const owner = emailPropietariReserva(data, deps.config.casa);
+    await Promise.all([
+      deps.sendEmail({ from: deps.config.casa.from, to: body.email!, subject: client.subject, html: client.html }),
+      deps.sendEmail({
+        from: deps.config.casa.from, to: deps.config.casa.owner, subject: owner.subject,
+        html: owner.html, reply_to: body.email!,
+      }),
+    ]);
+  } catch (error) {
+    deps.logError?.("Error enviant els correus de reserva", error);
+    return finish({
+      ok: true,
+      reservation,
+      reference: reservation.reference,
+      status: reservation.status,
+      warning: "Sol·licitud creada però l'enviament del correu ha fallat",
+    });
+  }
+
+  return finish({ ok: true, reference: reservation.reference, status: reservation.status });
 }

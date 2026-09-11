@@ -8,6 +8,7 @@ import {
   sendContactRequest,
   type ContactResponse,
 } from "@/lib/contact";
+import { ErrorToast, useErrorToast } from "@/components/error-toast";
 import styles from "./contact-form.module.css";
 
 export function ContactForm() {
@@ -17,6 +18,7 @@ export function ContactForm() {
   const [response, setResponse] = useState<ContactResponse | null>(null);
   const [error, setError] = useState("");
   const [requestKey, setRequestKey] = useState<string | null>(null);
+  const toast = useErrorToast();
 
   function errorMessage(caught: unknown): string {
     if (!(caught instanceof ContactRequestError)) return t("errorGeneric");
@@ -51,7 +53,9 @@ export function ContactForm() {
       }, key);
       setResponse(result);
     } catch (submitError) {
-      setError(errorMessage(submitError));
+      const message = errorMessage(submitError);
+      setError(message);
+      toast.show(message);
     } finally {
       setSending(false);
     }
@@ -102,6 +106,7 @@ export function ContactForm() {
           </button>
         </form>
       </div>
+      <ErrorToast message={toast.message} nonce={toast.nonce} onDismiss={toast.dismiss} closeLabel={t("closeError")} />
     </section>
   );
 }

@@ -48,6 +48,8 @@ class MockRequestStore {
   claims: ClaimResult[] = [{ outcome: "claimed" }];
   claimInputs: ClaimInput[] = [];
   completions: Array<{ status: number; body: unknown }> = [];
+  /** Set to make completeRequest throw — exercises the handler's top-level safety net. */
+  completeError: Error | null = null;
 
   async claimRequest(input: ClaimInput): Promise<ClaimResult> {
     this.claimInputs.push(input);
@@ -61,6 +63,7 @@ class MockRequestStore {
     status: number,
     body: unknown,
   ): Promise<void> {
+    if (this.completeError) throw this.completeError;
     this.completions.push({ status, body });
   }
 }
@@ -159,6 +162,24 @@ test("contact honeypot returns generic success without storing or emailing", asy
   assert.equal(sends, 0);
 });
 
+test("contact: an unexpected error anywhere in the pipeline is logged and returns a clean 500", async () => {
+  const store = new MockContactStore();
+  store.completeError = new Error("connection terminated unexpectedly");
+  const logs: Array<{ message: string; error: unknown }> = [];
+  const response = await createContactHandler({
+    config, store, sendEmail: async () => {},
+    logError: (message, error) => logs.push({ message, error }),
+  })(request(contactBody));
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(await body(response), {
+    error: "S'ha produït un error inesperat. Torneu-ho a provar d'aquí a uns instants.",
+  });
+  assert.equal(logs.length, 1);
+  assert.match(logs[0].message, /error inesperat/i);
+  assert.equal((logs[0].error as Error).message, "connection terminated unexpectedly");
+});
+
 test("reservation normal path stores once and sends client and owner emails", async () => {
   const store = new MockReservationStore();
   const emails: unknown[] = [];
@@ -218,4 +239,34 @@ test("reservation unavailable path returns 409 without row or email duplication"
   assert.equal(store.inserted.length, 0);
   assert.equal(sends, 0);
   assert.equal(store.completions[0].status, 409);
+});
+
+test("reservation: an unexpected error anywhere in the pipeline is logged and returns a clean 500", async () => {
+  const store = new MockReservationStore();
+  // Not one of the specifically-handled failure points (validation, claim,
+  // create, email) — this simulates a bug or outage nobody anticipated,
+  // e.g. completeRequest's own DB write failing.
+  store.completeError = new Error("connection terminated unexpectedly");
+  const logs: Array<{ message: string; error: unknown }> = [];
+  const response = await createReservationHandler({
+    config, store, sendEmail: async () => {},
+    logError: (message, error) => logs.push({ message, error }),
+  })(request(reservationBody));
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(await body(response), {
+    error: "S'ha produït un error inesperat. Torneu-ho a provar d'aquí a uns instants.",
+  });
+  assert.equal(logs.length, 1);
+  assert.match(logs[0].message, /error inesperat/i);
+  assert.equal((logs[0].error as Error).message, "connection terminated unexpectedly");
+});
+
+test("reservation: an unexpected error without a logError dependency still returns a clean 500", async () => {
+  const store = new MockReservationStore();
+  store.completeError = new Error("boom");
+  const response = await createReservationHandler({ config, store, sendEmail: async () => {} })(
+    request(reservationBody),
+  );
+  assert.equal(response.status, 500);
 });

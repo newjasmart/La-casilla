@@ -10,6 +10,7 @@ import {
   type ReservationResponse,
   type StayQuote,
 } from "@/lib/booking";
+import { ErrorToast, useErrorToast } from "@/components/error-toast";
 import { formatMoney } from "@/lib/intl-format";
 import styles from "./booking-flow.module.css";
 
@@ -118,6 +119,7 @@ export function BookingFlow({
   const [reservation, setReservation] = useState<ReservationResponse | null>(null);
   const [reservationError, setReservationError] = useState("");
   const [reservationKey, setReservationKey] = useState<string | null>(null);
+  const toast = useErrorToast();
 
   function updateSelection<K extends keyof Selection>(key: K, value: Selection[K]) {
     setSelection((current) => ({ ...current, [key]: value }));
@@ -145,9 +147,14 @@ export function BookingFlow({
     try {
       const result = await getStayQuote(selection);
       setQuote(result);
-      if (!result.available) setQuoteMessage(t("notAvailable"));
+      if (!result.available) {
+        setQuoteMessage(t("notAvailable"));
+        toast.show(t("notAvailable"));
+      }
     } catch (error) {
-      setQuoteMessage(quoteError(error));
+      const message = quoteError(error);
+      setQuoteMessage(message);
+      toast.show(message);
     } finally {
       setChecking(false);
     }
@@ -177,7 +184,9 @@ export function BookingFlow({
       }, key);
       setReservation(result);
     } catch (error) {
-      setReservationError(reservationErrorMessage(error));
+      const message = reservationErrorMessage(error);
+      setReservationError(message);
+      toast.show(message);
     } finally {
       setSending(false);
     }
@@ -332,6 +341,7 @@ export function BookingFlow({
           </form>
         )}
       </div>
+      <ErrorToast message={toast.message} nonce={toast.nonce} onDismiss={toast.dismiss} closeLabel={t("closeError")} />
     </section>
   );
 }
