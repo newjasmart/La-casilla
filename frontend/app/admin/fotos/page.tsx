@@ -8,6 +8,7 @@ import { RequireStaff } from "@/components/admin/require-staff";
 import { supabaseErrorMessage } from "@/lib/admin-errors";
 import { publicMediaUrl } from "@/lib/media";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { useEditableRows } from "@/lib/use-editable-rows";
 import type { AdminPropertyMedia, MediaCategory } from "@/types/admin";
 import styles from "@/app/admin/admin.module.css";
 
@@ -89,25 +90,10 @@ function MediaList({
   media: AdminPropertyMedia[];
   onMutated: () => void;
 }) {
-  const [drafts, setDrafts] = useState<Record<string, MediaDraft>>({});
-  const [rowError, setRowError] = useState<Record<string, string>>({});
-  const [rowBusy, setRowBusy] = useState<Record<string, boolean>>({});
-
-  function draftFor(row: AdminPropertyMedia): MediaDraft {
-    return drafts[row.id] ?? toDraft(row);
-  }
-
-  function updateDraft(id: string, patch: Partial<MediaDraft>) {
-    setDrafts((current) => ({ ...current, [id]: { ...(current[id] ?? toDraft(media.find((r) => r.id === id)!)), ...patch } }));
-  }
+  const { draftFor, updateDraft, rowError, rowBusy, save, remove } = useEditableRows(media, toDraft);
 
   async function saveRow(id: string) {
-    const draft = drafts[id];
-    if (!draft) return;
-    setRowError((current) => ({ ...current, [id]: "" }));
-    setRowBusy((current) => ({ ...current, [id]: true }));
-
-    const { error } = await getSupabaseBrowserClient()
+    const ok = await save(id, (draft) => getSupabaseBrowserClient()
       .from("property_media")
       .update({
         category: draft.category,
@@ -116,33 +102,17 @@ function MediaList({
         sort_order: Number(draft.sort_order),
         published: draft.published,
       })
-      .eq("id", id);
-
-    setRowBusy((current) => ({ ...current, [id]: false }));
-    if (error) {
-      setRowError((current) => ({ ...current, [id]: supabaseErrorMessage(error) }));
-      return;
-    }
-    onMutated();
-    setDrafts((current) => {
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
+      .eq("id", id));
+    if (ok) onMutated();
   }
 
   async function deleteRow(row: AdminPropertyMedia) {
-    if (!confirm("Segur que voleu eliminar aquesta foto? També s’esborrarà l’arxiu.")) return;
-    setRowBusy((current) => ({ ...current, [row.id]: true }));
-    const supabase = getSupabaseBrowserClient();
-    await supabase.storage.from("property-media").remove([row.storage_path]);
-    const { error } = await supabase.from("property_media").delete().eq("id", row.id);
-    setRowBusy((current) => ({ ...current, [row.id]: false }));
-    if (error) {
-      setRowError((current) => ({ ...current, [row.id]: supabaseErrorMessage(error) }));
-      return;
-    }
-    onMutated();
+    const ok = await remove(row.id, "Segur que voleu eliminar aquesta foto? També s’esborrarà l’arxiu.", async () => {
+      const supabase = getSupabaseBrowserClient();
+      await supabase.storage.from("property-media").remove([row.storage_path]);
+      return supabase.from("property_media").delete().eq("id", row.id);
+    });
+    if (ok) onMutated();
   }
 
   return (

@@ -8,6 +8,7 @@ import { RequireStaff } from "@/components/admin/require-staff";
 import { supabaseErrorMessage } from "@/lib/admin-errors";
 import { parseDateRange, toDateRange } from "@/lib/daterange";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { useEditableRows } from "@/lib/use-editable-rows";
 import type { AdminProperty, FeeRule, RatePeriod } from "@/types/admin";
 import styles from "@/app/admin/admin.module.css";
 
@@ -150,7 +151,6 @@ function BasePricingSection({
 }
 
 interface RatePeriodDraft {
-  id: string;
   name: string;
   start: string;
   end: string;
@@ -160,10 +160,9 @@ interface RatePeriodDraft {
   active: boolean;
 }
 
-function toDraft(row: RatePeriod): RatePeriodDraft {
+function toRatePeriodDraft(row: RatePeriod): RatePeriodDraft {
   const range = parseDateRange(row.stay_period);
   return {
-    id: row.id,
     name: row.name,
     start: range?.start ?? "",
     end: range?.end ?? "",
@@ -181,30 +180,15 @@ function RatePeriodsSection({
   ratePeriods: RatePeriod[];
   onMutated: () => void;
 }) {
-  const [drafts, setDrafts] = useState<Record<string, RatePeriodDraft>>({});
-  const [rowError, setRowError] = useState<Record<string, string>>({});
-  const [rowSaving, setRowSaving] = useState<Record<string, boolean>>({});
-  const [newDraft, setNewDraft] = useState<Omit<RatePeriodDraft, "id">>({
+  const { draftFor, updateDraft, rowError, rowBusy, save, remove } = useEditableRows(ratePeriods, toRatePeriodDraft);
+  const [newDraft, setNewDraft] = useState<RatePeriodDraft>({
     name: "", start: "", end: "", nightly_price: "", minimum_nights: "1", priority: "0", active: true,
   });
   const [newError, setNewError] = useState("");
   const [newSaving, setNewSaving] = useState(false);
 
-  function draftFor(row: RatePeriod): RatePeriodDraft {
-    return drafts[row.id] ?? toDraft(row);
-  }
-
-  function updateDraft(id: string, patch: Partial<RatePeriodDraft>) {
-    setDrafts((current) => ({ ...current, [id]: { ...(current[id] ?? toDraft(ratePeriods.find((r) => r.id === id)!)), ...patch } }));
-  }
-
   async function saveRow(id: string) {
-    const draft = drafts[id];
-    if (!draft) return;
-    setRowError((current) => ({ ...current, [id]: "" }));
-    setRowSaving((current) => ({ ...current, [id]: true }));
-
-    const { error } = await getSupabaseBrowserClient()
+    const ok = await save(id, (draft) => getSupabaseBrowserClient()
       .from("rate_periods")
       .update({
         name: draft.name,
@@ -214,29 +198,14 @@ function RatePeriodsSection({
         priority: Number(draft.priority),
         active: draft.active,
       })
-      .eq("id", id);
-
-    setRowSaving((current) => ({ ...current, [id]: false }));
-    if (error) {
-      setRowError((current) => ({ ...current, [id]: supabaseErrorMessage(error) }));
-      return;
-    }
-    onMutated();
-    setDrafts((current) => {
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
+      .eq("id", id));
+    if (ok) onMutated();
   }
 
   async function deleteRow(id: string) {
-    if (!confirm("Segur que voleu eliminar aquesta temporada de preus?")) return;
-    const { error } = await getSupabaseBrowserClient().from("rate_periods").delete().eq("id", id);
-    if (error) {
-      setRowError((current) => ({ ...current, [id]: supabaseErrorMessage(error) }));
-      return;
-    }
-    onMutated();
+    const ok = await remove(id, "Segur que voleu eliminar aquesta temporada de preus?", () => getSupabaseBrowserClient()
+      .from("rate_periods").delete().eq("id", id));
+    if (ok) onMutated();
   }
 
   async function addRow(event: FormEvent<HTMLFormElement>) {
@@ -300,8 +269,8 @@ function RatePeriodsSection({
                     <td><input type="checkbox" checked={draft.active} onChange={(e) => updateDraft(row.id, { active: e.target.checked })} /></td>
                     <td>
                       <div className={styles.rowActions}>
-                        <button type="button" className={styles.secondaryButton} disabled={rowSaving[row.id]} onClick={() => saveRow(row.id)}>
-                          {rowSaving[row.id] ? "Desant…" : "Desa"}
+                        <button type="button" className={styles.secondaryButton} disabled={rowBusy[row.id]} onClick={() => saveRow(row.id)}>
+                          {rowBusy[row.id] ? "Desant…" : "Desa"}
                         </button>
                         <button type="button" className={styles.dangerButton} onClick={() => deleteRow(row.id)}>Elimina</button>
                       </div>
@@ -374,6 +343,12 @@ function toFeeDraft(row: FeeRule): FeeRuleDraft {
   };
 }
 
+function validPeriodFrom(start: string, end: string): string | null | "invalid" {
+  if (!start && !end) return null;
+  if (!start || !end) return "invalid";
+  return toDateRange(start, end);
+}
+
 function FeeRulesSection({
   feeRules,
   onMutated,
@@ -381,74 +356,38 @@ function FeeRulesSection({
   feeRules: FeeRule[];
   onMutated: () => void;
 }) {
-  const [drafts, setDrafts] = useState<Record<string, FeeRuleDraft>>({});
-  const [rowError, setRowError] = useState<Record<string, string>>({});
-  const [rowSaving, setRowSaving] = useState<Record<string, boolean>>({});
+  const { draftFor, updateDraft, rowError, rowBusy, save, remove, setError } = useEditableRows(feeRules, toFeeDraft);
   const [newDraft, setNewDraft] = useState<FeeRuleDraft>({
     code: "", label: "", calculation: "per_stay", amount: "", validStart: "", validEnd: "", active: true, sortOrder: "0",
   });
   const [newError, setNewError] = useState("");
   const [newSaving, setNewSaving] = useState(false);
 
-  function draftFor(row: FeeRule): FeeRuleDraft {
-    return drafts[row.id] ?? toFeeDraft(row);
-  }
-
-  function updateDraft(id: string, patch: Partial<FeeRuleDraft>) {
-    setDrafts((current) => ({ ...current, [id]: { ...(current[id] ?? toFeeDraft(feeRules.find((r) => r.id === id)!)), ...patch } }));
-  }
-
-  function validPeriodFrom(start: string, end: string): string | null | "invalid" {
-    if (!start && !end) return null;
-    if (!start || !end) return "invalid";
-    return toDateRange(start, end);
-  }
-
-  async function saveRow(id: string) {
-    const draft = drafts[id];
-    if (!draft) return;
+  async function saveRow(id: string, draft: FeeRuleDraft) {
     const validPeriod = validPeriodFrom(draft.validStart, draft.validEnd);
     if (validPeriod === "invalid") {
-      setRowError((current) => ({ ...current, [id]: "Indiqueu inici i fi, o cap dels dos." }));
+      setError(id, "Indiqueu inici i fi, o cap dels dos.");
       return;
     }
-    setRowError((current) => ({ ...current, [id]: "" }));
-    setRowSaving((current) => ({ ...current, [id]: true }));
-
-    const { error } = await getSupabaseBrowserClient()
+    const ok = await save(id, (d) => getSupabaseBrowserClient()
       .from("fee_rules")
       .update({
-        code: draft.code,
-        label: draft.label,
-        calculation: draft.calculation,
-        amount: Number(draft.amount),
+        code: d.code,
+        label: d.label,
+        calculation: d.calculation,
+        amount: Number(d.amount),
         valid_period: validPeriod,
-        active: draft.active,
-        sort_order: Number(draft.sortOrder),
+        active: d.active,
+        sort_order: Number(d.sortOrder),
       })
-      .eq("id", id);
-
-    setRowSaving((current) => ({ ...current, [id]: false }));
-    if (error) {
-      setRowError((current) => ({ ...current, [id]: supabaseErrorMessage(error) }));
-      return;
-    }
-    onMutated();
-    setDrafts((current) => {
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
+      .eq("id", id));
+    if (ok) onMutated();
   }
 
   async function deleteRow(id: string) {
-    if (!confirm("Segur que voleu eliminar aquest suplement?")) return;
-    const { error } = await getSupabaseBrowserClient().from("fee_rules").delete().eq("id", id);
-    if (error) {
-      setRowError((current) => ({ ...current, [id]: supabaseErrorMessage(error) }));
-      return;
-    }
-    onMutated();
+    const ok = await remove(id, "Segur que voleu eliminar aquest suplement?", () => getSupabaseBrowserClient()
+      .from("fee_rules").delete().eq("id", id));
+    if (ok) onMutated();
   }
 
   async function addRow(event: FormEvent<HTMLFormElement>) {
@@ -523,8 +462,8 @@ function FeeRulesSection({
                     <td><input type="checkbox" checked={draft.active} onChange={(e) => updateDraft(row.id, { active: e.target.checked })} /></td>
                     <td>
                       <div className={styles.rowActions}>
-                        <button type="button" className={styles.secondaryButton} disabled={rowSaving[row.id]} onClick={() => saveRow(row.id)}>
-                          {rowSaving[row.id] ? "Desant…" : "Desa"}
+                        <button type="button" className={styles.secondaryButton} disabled={rowBusy[row.id]} onClick={() => saveRow(row.id, draft)}>
+                          {rowBusy[row.id] ? "Desant…" : "Desa"}
                         </button>
                         <button type="button" className={styles.dangerButton} onClick={() => deleteRow(row.id)}>Elimina</button>
                       </div>

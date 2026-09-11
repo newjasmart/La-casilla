@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { RequireStaff } from "@/components/admin/require-staff";
 import { supabaseErrorMessage } from "@/lib/admin-errors";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { useEditableRows } from "@/lib/use-editable-rows";
 import { LOCALE_DISPLAY_NAMES, TRANSLATABLE_LOCALES, type AdminReview, type TranslatableLocale } from "@/types/admin";
 import styles from "@/app/admin/admin.module.css";
 
@@ -47,12 +48,7 @@ function ReviewsPageContent() {
       {isLoading && <p>Carregant…</p>}
       {error && <p className={styles.error} role="alert">{error instanceof Error ? error.message : "No s’han pogut carregar les ressenyes."}</p>}
 
-      {data && (
-        <>
-          <ReviewsList reviews={data} onMutated={() => mutate()} />
-          <AddReviewForm onAdded={() => mutate()} />
-        </>
-      )}
+      {data && <ReviewsList reviews={data} onMutated={() => mutate()} />}
     </>
   );
 }
@@ -88,81 +84,53 @@ function ReviewsList({
   reviews: AdminReview[];
   onMutated: () => void;
 }) {
-  const [drafts, setDrafts] = useState<Record<string, ReviewDraft>>({});
-  const [rowError, setRowError] = useState<Record<string, string>>({});
-  const [rowBusy, setRowBusy] = useState<Record<string, boolean>>({});
+  const { draftFor, updateDraft, rowError, rowBusy, save, remove } = useEditableRows(reviews, toDraft);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  function draftFor(row: AdminReview): ReviewDraft {
-    return drafts[row.id] ?? toDraft(row);
-  }
-
-  function updateDraft(id: string, patch: Partial<ReviewDraft>) {
-    setDrafts((current) => ({ ...current, [id]: { ...(current[id] ?? toDraft(reviews.find((r) => r.id === id)!)), ...patch } }));
-  }
-
   async function saveRow(row: AdminReview) {
-    const draft = drafts[row.id];
-    if (!draft) return;
-    setRowError((current) => ({ ...current, [row.id]: "" }));
-    setRowBusy((current) => ({ ...current, [row.id]: true }));
+    const ok = await save(row.id, (draft) => {
+      const publishedAt = draft.published
+        ? (row.published ? row.published_at : new Date().toISOString())
+        : null;
+      const cleanedTranslations = Object.fromEntries(
+        Object.entries(draft.comment_translations)
+          .map(([locale, text]) => [locale, text?.trim() ?? ""])
+          .filter(([, text]) => text),
+      );
 
-    const wasPublished = row.published;
-    const nowPublished = draft.published;
-    const publishedAt = nowPublished
-      ? (wasPublished ? row.published_at : new Date().toISOString())
-      : null;
-
-    const cleanedTranslations = Object.fromEntries(
-      Object.entries(draft.comment_translations)
-        .map(([locale, text]) => [locale, text?.trim() ?? ""])
-        .filter(([, text]) => text),
-    );
-
-    const { error } = await getSupabaseBrowserClient()
-      .from("reviews")
-      .update({
-        display_name: draft.display_name,
-        rating: Number(draft.rating),
-        comment: draft.comment,
-        comment_translations: cleanedTranslations,
-        source: draft.source.trim() || null,
-        source_url: draft.source_url.trim() || null,
-        stay_month: draft.stay_month ? `${draft.stay_month}-01` : null,
-        published: nowPublished,
-        published_at: publishedAt,
-      })
-      .eq("id", row.id);
-
-    setRowBusy((current) => ({ ...current, [row.id]: false }));
-    if (error) {
-      setRowError((current) => ({ ...current, [row.id]: supabaseErrorMessage(error) }));
-      return;
-    }
-    onMutated();
-    setDrafts((current) => {
-      const next = { ...current };
-      delete next[row.id];
-      return next;
+      return getSupabaseBrowserClient()
+        .from("reviews")
+        .update({
+          display_name: draft.display_name,
+          rating: Number(draft.rating),
+          comment: draft.comment,
+          comment_translations: cleanedTranslations,
+          source: draft.source.trim() || null,
+          source_url: draft.source_url.trim() || null,
+          stay_month: draft.stay_month ? `${draft.stay_month}-01` : null,
+          published: draft.published,
+          published_at: publishedAt,
+        })
+        .eq("id", row.id);
     });
+    if (ok) onMutated();
   }
 
   async function deleteRow(id: string) {
-    if (!confirm("Segur que voleu eliminar aquesta ressenya?")) return;
-    const { error } = await getSupabaseBrowserClient().from("reviews").delete().eq("id", id);
-    if (error) {
-      setRowError((current) => ({ ...current, [id]: supabaseErrorMessage(error) }));
-      return;
-    }
-    onMutated();
+    const ok = await remove(id, "Segur que voleu eliminar aquesta ressenya?", () => getSupabaseBrowserClient()
+      .from("reviews").delete().eq("id", id));
+    if (ok) onMutated();
   }
 
   return (
     <section className={styles.section}>
-      <h2>Ressenyes existents</h2>
+      <h2>Ressenyes</h2>
       <p className={styles.sectionHint}>
-        Només les ressenyes &quot;Publicada&quot; es mostren al lloc web, ordenades per data de
-        publicació.
+        Aquestes ressenyes provenen dels vostres hostes reals (carregades directament a la base
+        de dades). Des d&apos;aquí podeu publicar-les, traduir-les, corregir-hi una errada o
+        eliminar les que no vulgueu mostrar — <strong>no es poden crear ressenyes noves des
+        d&apos;aquest tauler</strong>, per evitar testimonis falsos. Només les &quot;Publicada&quot;
+        es mostren al lloc web, ordenades per data de publicació.
       </p>
       <div className={styles.card}>
         <div className={styles.tableWrap}>
@@ -239,88 +207,6 @@ function ReviewsList({
             </tbody>
           </table>
         </div>
-      </div>
-    </section>
-  );
-}
-
-function AddReviewForm({ onAdded }: { onAdded: () => void }) {
-  const [displayName, setDisplayName] = useState("");
-  const [rating, setRating] = useState("5");
-  const [comment, setComment] = useState("");
-  const [source, setSource] = useState("");
-  const [stayMonth, setStayMonth] = useState("");
-  const [published, setPublished] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!displayName.trim() || !comment.trim()) {
-      setError("El nom i el comentari són obligatoris.");
-      return;
-    }
-    setError("");
-    setSaving(true);
-
-    const { error: insertError } = await getSupabaseBrowserClient().from("reviews").insert({
-      property_id: 1,
-      display_name: displayName.trim(),
-      rating: Number(rating),
-      comment: comment.trim(),
-      source: source.trim() || null,
-      stay_month: stayMonth ? `${stayMonth}-01` : null,
-      published,
-      published_at: published ? new Date().toISOString() : null,
-    });
-
-    setSaving(false);
-    if (insertError) {
-      setError(supabaseErrorMessage(insertError));
-      return;
-    }
-    setDisplayName("");
-    setRating("5");
-    setComment("");
-    setSource("");
-    setStayMonth("");
-    setPublished(false);
-    onAdded();
-  }
-
-  return (
-    <section className={styles.section}>
-      <h2>Afegeix una ressenya</h2>
-      <div className={styles.card}>
-        <form className={styles.form} onSubmit={submit}>
-          <div className={styles.fieldGrid}>
-            <label>Nom
-              <input required maxLength={120} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-            </label>
-            <label>Estrelles
-              <select value={rating} onChange={(e) => setRating(e.target.value)}>
-                {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value}</option>)}
-              </select>
-            </label>
-            <label>Font <span>(opcional)</span>
-              <input maxLength={80} value={source} onChange={(e) => setSource(e.target.value)} placeholder="Google, Airbnb…" />
-            </label>
-            <label>Mes d’estada <span>(opcional)</span>
-              <input type="month" value={stayMonth} onChange={(e) => setStayMonth(e.target.value)} />
-            </label>
-          </div>
-          <label>Comentari
-            <textarea rows={4} required maxLength={5000} value={comment} onChange={(e) => setComment(e.target.value)} />
-          </label>
-          <label className={styles.checkboxLabel}>
-            <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
-            Publica-la ara mateix
-          </label>
-          {error && <p className={styles.error} role="alert">{error}</p>}
-          <button className={styles.primaryButton} type="submit" disabled={saving} style={{ alignSelf: "flex-start" }}>
-            {saving ? "Afegint…" : "Afegeix la ressenya"}
-          </button>
-        </form>
       </div>
     </section>
   );
