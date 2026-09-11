@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same branch/PR instead of piling them up.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-unit-tests:
+    name: Backend · unit tests (node:test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      # Runs the mocked handler/config/template tests — no database needed.
+      - run: npm test
+
+  backend-db-tests:
+    name: Backend · database tests (pgTAP)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # A fresh runner has no prior volume, so this applies every migration
+      # in supabase/migrations (in order) and then seed.sql before serving —
+      # exactly what "npm run db:reset" does locally, just implicitly on
+      # first start.
+      - run: supabase start
+      - run: npm run db:test
+      - if: always()
+        run: supabase stop
+
+  frontend:
+    name: Frontend · lint, typecheck, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      # The public homepage is fully dynamic (uses next/server's connection())
+      # and every admin page is a client component, so nothing that reads
+      # these actually runs during `next build`'s static generation — these
+      # are just harmless placeholders in case that ever changes.
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
