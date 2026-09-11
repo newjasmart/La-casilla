@@ -31,6 +31,11 @@ site_url = "http://localhost:3000"
 additional_redirect_urls = ["https://lacasillacasarural.com", "https://www.lacasillacasarural.com"]
 jwt_expiry = 3600
 enable_signup = false
+# Staff accounts see guest PII and (once Stripe is live) payment records —
+# the platform default of 6 characters is too weak for that. No self-signup
+# exists (enable_signup above is false), so this only ever affects staff
+# passwords set by an existing technical_admin.
+minimum_password_length = 12
 
 [auth.email]
 enable_signup = true

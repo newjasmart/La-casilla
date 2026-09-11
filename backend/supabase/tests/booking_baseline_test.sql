@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(23);
 
 select has_table('public', 'properties', 'whole property exists');
 select hasnt_table('public', 'rooms', 'rooms domain was removed');
@@ -68,6 +68,22 @@ select throws_ok($$
     'requested', null
   )
 $$, '22023', 'INVALID_STATUS_TRANSITION', 'invalid backward transition is rejected');
+
+-- calculate_stay_quote throttles the anonymous, public-facing caller once it
+-- is hammered, but never the trusted internal path a real booking takes.
+insert into public.quote_rate_limit(window_start, request_count)
+values (date_trunc('hour', clock_timestamp()), 500);
+set local "request.jwt.claim.role" = 'anon';
+select throws_ok(
+  $$select public.calculate_stay_quote('2027-12-01','2027-12-03',2,0,0)$$,
+  '42901', 'Massa consultes de preu; torneu-ho a provar més tard',
+  'a hammered anonymous caller is throttled'
+);
+reset "request.jwt.claim.role";
+select lives_ok(
+  $$select public.calculate_stay_quote('2027-12-01','2027-12-03',2,0,0)$$,
+  'the same exhausted window never throttles a trusted (non-anon) caller'
+);
 
 select * from finish();
 rollback;
