@@ -312,6 +312,34 @@
   margin: 0 auto;
 }
 
+.cyclingIntro {
+  max-width: 640px;
+  margin-top: 24px;
+  color: var(--color-muted);
+}
+
+.cyclingGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 48px;
+}
+
+.cyclingCard {
+  padding: 30px 26px;
+  border-radius: 20px;
+  background: var(--color-surface);
+}
+
+.cyclingCard h3 {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.cyclingCard p { color: var(--color-muted); font-size: 0.92rem; line-height: 1.5; }
+
 .roomGrid {
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
@@ -577,6 +605,7 @@
   .immersive h2 { font-size: clamp(3rem, 15vw, 4.5rem); }
   .roomGrid { grid-template-columns: 1fr; grid-template-rows: 520px 360px 360px; }
   .roomCardLarge { grid-row: auto; }
+  .cyclingGrid { grid-template-columns: 1fr; }
   .mediaGrid { grid-template-columns: 1fr; }
   .mediaImageFrame { min-height: 300px; }
   .nextStep,

@@ -19,7 +19,9 @@ const config: FunctionConfig = {
   rateLimitWindowSeconds: 3600,
   emailDeliveryMode: "live",
 };
-const stripeConfig: StripeConfig = { secretKey: "sk_test_fake", webhookSecret: "whsec_test_fake_secret" };
+const stripeConfig: StripeConfig = {
+  secretKey: "sk_test_fake", webhookSecret: "whsec_test_fake_secret", feePercent: 1.5, feeFixed: 0.25,
+};
 
 const baseReservation: PaymentReservationLookup = {
   id: "11111111-1111-1111-1111-111111111111",
@@ -53,6 +55,11 @@ class MockPaymentStore implements PaymentStore {
 
   async markReservationPaymentPending(reservationId: string) {
     this.paymentPendingCalls.push(reservationId);
+  }
+
+  holdExtensions: Array<{ reservationId: string; holdMinutes: number }> = [];
+  async extendPaymentHold(reservationId: string, holdMinutes: number) {
+    this.holdExtensions.push({ reservationId, holdMinutes });
   }
 }
 
@@ -221,11 +228,23 @@ class MockWebhookStore implements WebhookStore {
     if (this.transitionError) throw this.transitionError;
     this.transitions.push({ reservationId, status: newStatus });
   }
+
+  async getReservationSummary(_reservationId: string) {
+    return {
+      publicReference: baseReservation.publicReference,
+      firstName: baseReservation.firstName,
+      lastName: "Test",
+      arrivalDate: "2027-07-10",
+      departureDate: "2027-07-15",
+      totalAmount: baseReservation.totalAmount,
+      currency: baseReservation.currency,
+    };
+  }
 }
 
 test("stripe-webhook: rejects a request without a valid signature", async () => {
   const store = new MockWebhookStore();
-  const handler = createStripeWebhookHandler({ stripeConfig, store, verifySignature: verifyStripeSignature });
+  const handler = createStripeWebhookHandler({ casa: config.casa, stripeConfig, store, sendEmail: async () => {}, verifySignature: verifyStripeSignature });
   const response = await handler(new Request("https://x/stripe-webhook", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -237,7 +256,7 @@ test("stripe-webhook: rejects a request without a valid signature", async () => 
 test("stripe-webhook: checkout.session.completed marks the payment paid and confirms the reservation", async () => {
   const store = new MockWebhookStore();
   store.intents.set("cs_1", { id: "pi-1", reservationId: baseReservation.id, status: "pending" });
-  const handler = createStripeWebhookHandler({ stripeConfig, store, verifySignature: verifyStripeSignature });
+  const handler = createStripeWebhookHandler({ casa: config.casa, stripeConfig, store, sendEmail: async () => {}, verifySignature: verifyStripeSignature });
 
   const response = await handler(await signedRequest({
     id: "evt_1", type: "checkout.session.completed", data: { object: { id: "cs_1" } },
@@ -251,7 +270,7 @@ test("stripe-webhook: checkout.session.completed marks the payment paid and conf
 test("stripe-webhook: the same event delivered twice only confirms once", async () => {
   const store = new MockWebhookStore();
   store.intents.set("cs_1", { id: "pi-1", reservationId: baseReservation.id, status: "pending" });
-  const handler = createStripeWebhookHandler({ stripeConfig, store, verifySignature: verifyStripeSignature });
+  const handler = createStripeWebhookHandler({ casa: config.casa, stripeConfig, store, sendEmail: async () => {}, verifySignature: verifyStripeSignature });
   const event = { id: "evt_1", type: "checkout.session.completed", data: { object: { id: "cs_1" } } };
 
   await handler(await signedRequest(event));
@@ -264,7 +283,7 @@ test("stripe-webhook: the same event delivered twice only confirms once", async 
 test("stripe-webhook: checkout.session.expired marks the payment failed without touching the reservation", async () => {
   const store = new MockWebhookStore();
   store.intents.set("cs_2", { id: "pi-2", reservationId: baseReservation.id, status: "pending" });
-  const handler = createStripeWebhookHandler({ stripeConfig, store, verifySignature: verifyStripeSignature });
+  const handler = createStripeWebhookHandler({ casa: config.casa, stripeConfig, store, sendEmail: async () => {}, verifySignature: verifyStripeSignature });
 
   const response = await handler(await signedRequest({
     id: "evt_2", type: "checkout.session.expired", data: { object: { id: "cs_2" } },
@@ -281,7 +300,7 @@ test("stripe-webhook: payment received but the reservation can't be confirmed (e
   store.transitionError = new Error("INVALID_STATUS_TRANSITION");
   const logs: Array<{ message: string; error: unknown }> = [];
   const handler = createStripeWebhookHandler({
-    stripeConfig, store, verifySignature: verifyStripeSignature,
+    casa: config.casa, stripeConfig, store, sendEmail: async () => {}, verifySignature: verifyStripeSignature,
     logError: (message, error) => logs.push({ message, error }),
   });
 
@@ -297,7 +316,7 @@ test("stripe-webhook: payment received but the reservation can't be confirmed (e
 
 test("stripe-webhook: an unhandled event type is acknowledged without side effects", async () => {
   const store = new MockWebhookStore();
-  const handler = createStripeWebhookHandler({ stripeConfig, store, verifySignature: verifyStripeSignature });
+  const handler = createStripeWebhookHandler({ casa: config.casa, stripeConfig, store, sendEmail: async () => {}, verifySignature: verifyStripeSignature });
   const response = await handler(await signedRequest({ id: "evt_4", type: "charge.succeeded", data: { object: {} } }));
   assert.equal(response.status, 200);
   assert.equal(store.statusUpdates.length, 0);
@@ -305,14 +324,14 @@ test("stripe-webhook: an unhandled event type is acknowledged without side effec
 
 test("stripe-webhook: a signature computed with the wrong secret is rejected", async () => {
   const store = new MockWebhookStore();
-  const handler = createStripeWebhookHandler({ stripeConfig, store, verifySignature: verifyStripeSignature });
+  const handler = createStripeWebhookHandler({ casa: config.casa, stripeConfig, store, sendEmail: async () => {}, verifySignature: verifyStripeSignature });
   const response = await handler(await signedRequest({ id: "evt_5", type: "checkout.session.completed", data: { object: { id: "cs_1" } } }, "whsec_wrong_secret"));
   assert.equal(response.status, 400);
 });
 
 test("stripe-webhook: an old timestamp outside the replay tolerance is rejected", async () => {
   const store = new MockWebhookStore();
-  const handler = createStripeWebhookHandler({ stripeConfig, store, verifySignature: verifyStripeSignature });
+  const handler = createStripeWebhookHandler({ casa: config.casa, stripeConfig, store, sendEmail: async () => {}, verifySignature: verifyStripeSignature });
   const oldTimestamp = Math.floor(Date.now() / 1000) - 3600; // 1h old, default tolerance 300s
   const response = await handler(await signedRequest({ id: "evt_6", type: "checkout.session.completed", data: { object: { id: "cs_1" } } }, stripeConfig.webhookSecret, oldTimestamp));
   assert.equal(response.status, 400);

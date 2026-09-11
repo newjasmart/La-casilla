@@ -226,6 +226,16 @@
   border-radius: 10px;
 }
 
+.paymentStatusBanner {
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  border: 1px solid #c9dcc7;
+  border-radius: 10px;
+  background: #eef4ec;
+  color: #3e6844;
+  font-weight: 600;
+}
+
 .formActions {
   display: flex;
   flex-wrap: wrap;

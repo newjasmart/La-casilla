@@ -31,8 +31,11 @@ export interface ContactStore extends RequestStore {
 
 export interface ReservationStore extends RequestStore {
   createReservationRequest(values: Record<string, unknown>): Promise<{
+    reservationId: string;
     reference: string;
     status: string;
+    totalAmount: number;
+    currency: string;
   }>;
 }
 
@@ -96,10 +99,22 @@ export function createFormStore(client: SupabaseClient): ContactStore & Reservat
         throw dbError("No s'ha pogut crear la sol·licitud de reserva", error);
       }
       const result = data as Record<string, unknown>;
-      if (typeof result.reference !== "string" || typeof result.status !== "string") {
+      if (
+        typeof result.reservation_id !== "string"
+        || typeof result.reference !== "string"
+        || typeof result.status !== "string"
+        || (typeof result.total_amount !== "number" && typeof result.total_amount !== "string")
+        || typeof result.currency !== "string"
+      ) {
         throw dbError("Resposta de reserva no vàlida");
       }
-      return { reference: result.reference, status: result.status };
+      return {
+        reservationId: result.reservation_id,
+        reference: result.reference,
+        status: result.status,
+        totalAmount: Number(result.total_amount),
+        currency: result.currency,
+      };
     },
   };
 }
@@ -144,6 +159,8 @@ export interface PaymentStore {
   }): Promise<{ record: PaymentIntentRecord; created: boolean }>;
   setPaymentIntentExternalReference(id: string, externalReference: string): Promise<void>;
   markReservationPaymentPending(reservationId: string): Promise<void>;
+  /** Refreshes calendar_entries.expires_at via the extend_payment_hold RPC — keeps a slow-to-pay guest's dates from being auto-released mid-checkout. */
+  extendPaymentHold(reservationId: string, holdMinutes: number): Promise<void>;
 }
 
 export function createPaymentStore(callerClient: SupabaseClient, serviceClient: SupabaseClient): PaymentStore {
@@ -237,7 +254,25 @@ export function createPaymentStore(callerClient: SupabaseClient, serviceClient: 
         .eq("id", reservationId);
       if (error) throw dbError("No s'ha pogut marcar la reserva com a pendent de pagament", error);
     },
+
+    async extendPaymentHold(reservationId, holdMinutes) {
+      const { error } = await serviceClient.rpc("extend_payment_hold", {
+        p_reservation_id: reservationId,
+        p_hold_minutes: holdMinutes,
+      });
+      if (error) throw dbError("No s'ha pogut prorrogar la reserva temporal del calendari", error);
+    },
   };
+}
+
+export interface ReservationSummary {
+  publicReference: string;
+  firstName: string;
+  lastName: string;
+  arrivalDate: string;
+  departureDate: string;
+  totalAmount: number;
+  currency: string;
 }
 
 export interface WebhookStore {
@@ -247,6 +282,8 @@ export interface WebhookStore {
   ): Promise<{ id: string; reservationId: string; status: string } | null>;
   markPaymentIntentStatus(id: string, status: string): Promise<void>;
   transitionReservation(reservationId: string, newStatus: string, reason?: string): Promise<void>;
+  /** Used only to build the "payment confirmed" notification to the owner — not a security check (the webhook already runs as service_role). */
+  getReservationSummary(reservationId: string): Promise<ReservationSummary | null>;
 }
 
 export function createWebhookStore(serviceClient: SupabaseClient): WebhookStore {
@@ -276,6 +313,26 @@ export function createWebhookStore(serviceClient: SupabaseClient): WebhookStore 
         p_reason: reason ?? null,
       });
       if (error || data !== true) throw dbError("No s'ha pogut canviar l'estat de la reserva", error);
+    },
+
+    async getReservationSummary(reservationId) {
+      const { data, error } = await serviceClient
+        .from("reservations")
+        .select("public_reference, first_name, last_name, arrival_date, departure_date, total_amount, currency")
+        .eq("id", reservationId)
+        .maybeSingle();
+      if (error) throw dbError("No s'ha pogut consultar el resum de la reserva", error);
+      if (!data) return null;
+      const row = data as Record<string, unknown>;
+      return {
+        publicReference: row.public_reference as string,
+        firstName: row.first_name as string,
+        lastName: row.last_name as string,
+        arrivalDate: row.arrival_date as string,
+        departureDate: row.departure_date as string,
+        totalAmount: Number(row.total_amount),
+        currency: row.currency as string,
+      };
     },
   };
 }

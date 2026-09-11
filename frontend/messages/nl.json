@@ -98,6 +98,17 @@
     "empty": "Er is nog geen enkele review gepubliceerd.",
     "ratingAria": "{count} van de 5 sterren"
   },
+  "Cycling": {
+    "eyebrow": "Fietsen",
+    "title": "In het hart van fietsland.",
+    "intro": "La Casilla ligt in de Vall d’en Bas, midden in het vulkanische landschap van de Garrotxa — een van de klassieke fietsstreken van Catalonië. Echte cols, rustige dalwegen en verkeersvrije fietspaden, vlak voor de deur.",
+    "bracons": "Coll de Bracons",
+    "braconsBody": "Een echte bergpas (1.132 m) tussen de vallei en Osona — een pittige uitdaging voor wie hoogtemeters zoekt.",
+    "valley": "De Vall d’en Bas",
+    "valleyBody": "Rustige, goed geasfalteerde wegen tussen akkers en vulkanen — een rustige warming-up, of een ontspannen dag voor groepen met wisselend niveau.",
+    "greenway": "Het fietspad Olot–Girona",
+    "greenwayBody": "Bijna 60 km vlak, verkeersvrij fietspad — en Olot zelf, de hoofdplaats van de streek, met fietswinkels en voorzieningen."
+  },
   "NextStep": {
     "eyebrow": "Jullie verblijf",
     "title": "Het huis, de groep en de fietsen.",
@@ -136,6 +147,8 @@
     "privacyAccept": "Ik ga ermee akkoord dat mijn gegevens worden gebruikt om deze aanvraag te verwerken.",
     "honeypotLabel": "Laat dit veld leeg",
     "closeError": "Melding sluiten",
+    "paymentSuccessBanner": "Betaling ontvangen! Je reservering is nu bevestigd — een bevestigingsmail volgt zo.",
+    "paymentCancelledBanner": "Je hebt de betaling geannuleerd. Er is niets verloren gegaan: je kunt hier verdergaan.",
     "changeDates": "Data wijzigen",
     "send": "Aanvraag versturen",
     "sending": "Bezig met verzenden…",

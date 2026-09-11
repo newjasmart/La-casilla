@@ -1,8 +1,10 @@
 import type { FunctionConfig } from "../_shared/config.ts";
-import type { ReservationStore } from "../_shared/db.ts";
+import type { PaymentStore, ReservationStore } from "../_shared/db.ts";
 import { claimFormRequest, completeAndRespond, corsHeaders, isAllowedOrigin, jsonResponse } from "../_shared/http.ts";
+import { startOrResumePayment, type PayableReservation } from "../_shared/payment-flow.ts";
 import type { ResendPayload } from "../_shared/resend.ts";
 import { validateIdempotencyKey } from "../_shared/security.ts";
+import { createCheckoutSession, retrieveCheckoutSession, type StripeConfig } from "../_shared/stripe.ts";
 import { emailClientReserva, emailPropietariReserva } from "../_shared/templates.ts";
 
 export interface ReservaInput {
@@ -26,6 +28,21 @@ export interface ReservationDependencies {
   store: ReservationStore;
   sendEmail(payload: ResendPayload): Promise<void>;
   logError?(message: string, error: unknown): void;
+  /**
+   * Payment is fully automatic: Marc does nothing beyond receiving the two
+   * notification emails below. These four let the reservation flow start a
+   * Stripe Checkout Session itself, right after creating the row, instead
+   * of waiting on an admin's manual click (see _shared/payment-flow.ts,
+   * shared with the admin-side create-payment-link function).
+   *
+   * Optional: until Stripe is configured (or if it's temporarily
+   * unreachable), reservations still work — they just fall back to the
+   * pre-payment "we'll be in touch" flow instead of crashing outright.
+   */
+  stripeConfig?: StripeConfig;
+  paymentStore?: PaymentStore;
+  createCheckoutSession: typeof createCheckoutSession;
+  retrieveCheckoutSession: typeof retrieveCheckoutSession;
 }
 
 function validar(body: Partial<ReservaInput>): string | null {
@@ -134,7 +151,7 @@ async function handleReservationRequest(request: Request, deps: ReservationDepen
 
   if (body.website) return finish({ ok: true });
 
-  let reservation: { reference: string; status: string };
+  let reservation: { reservationId: string; reference: string; status: string; totalAmount: number; currency: string };
   try {
     reservation = await deps.store.createReservationRequest({
       p_first_name: body.nom,
@@ -166,26 +183,72 @@ async function handleReservationRequest(request: Request, deps: ReservationDepen
     locale: body.locale,
   };
 
+  // Marc is notified the moment a request comes in, no matter what happens
+  // next with payment — this alone is everything he asked to have to do.
   try {
-    const client = emailClientReserva(data, deps.config.casa);
     const owner = emailPropietariReserva(data, deps.config.casa);
-    await Promise.all([
-      deps.sendEmail({ from: deps.config.casa.from, to: body.email!, subject: client.subject, html: client.html }),
-      deps.sendEmail({
-        from: deps.config.casa.from, to: deps.config.casa.owner, subject: owner.subject,
-        html: owner.html, reply_to: body.email!,
-      }),
-    ]);
-  } catch (error) {
-    deps.logError?.("Error enviant els correus de reserva", error);
-    return finish({
-      ok: true,
-      reservation,
-      reference: reservation.reference,
-      status: reservation.status,
-      warning: "Sol·licitud creada però l'enviament del correu ha fallat",
+    await deps.sendEmail({
+      from: deps.config.casa.from, to: deps.config.casa.owner, subject: owner.subject,
+      html: owner.html, reply_to: body.email!,
     });
+  } catch (error) {
+    deps.logError?.("Error enviant el correu de reserva al propietari", error);
   }
 
-  return finish({ ok: true, reference: reservation.reference, status: reservation.status });
+  // Payment is automatic and immediate — no admin review gate. If Stripe
+  // (or anything in that path) fails, this degrades to the old "we've
+  // received your request" flow rather than losing the reservation.
+  const payable: PayableReservation = {
+    id: reservation.reservationId,
+    publicReference: reservation.reference,
+    status: reservation.status,
+    email: body.email!,
+    firstName: body.nom!,
+    locale: body.locale,
+    totalAmount: reservation.totalAmount,
+    currency: reservation.currency,
+  };
+
+  if (deps.stripeConfig && deps.paymentStore) {
+    try {
+      const paymentResult = await startOrResumePayment(payable, {
+        config: deps.config,
+        stripeConfig: deps.stripeConfig,
+        store: deps.paymentStore,
+        sendEmail: deps.sendEmail,
+        createCheckoutSession: deps.createCheckoutSession,
+        retrieveCheckoutSession: deps.retrieveCheckoutSession,
+        logError: deps.logError,
+      });
+      if (paymentResult.ok) {
+        return finish({
+          ok: true,
+          reference: reservation.reference,
+          status: "payment_pending",
+          checkoutUrl: paymentResult.checkoutUrl,
+          warning: paymentResult.emailWarning,
+        });
+      }
+      // Not payable / already paid shouldn't happen for a reservation we
+      // just created as 'requested' — treat it the same as an unexpected
+      // failure below rather than inventing a third response shape for it.
+      deps.logError?.(`No s'ha pogut iniciar el pagament automàtic: ${paymentResult.message}`, paymentResult);
+    } catch (error) {
+      deps.logError?.("Error iniciant el pagament automàtic de la reserva", error);
+    }
+  }
+
+  try {
+    const client = emailClientReserva(data, deps.config.casa);
+    await deps.sendEmail({ from: deps.config.casa.from, to: body.email!, subject: client.subject, html: client.html });
+  } catch (error) {
+    deps.logError?.("Error enviant el correu de confirmació al client", error);
+  }
+
+  return finish({
+    ok: true,
+    reference: reservation.reference,
+    status: reservation.status,
+    warning: "Hem rebut la teva sol·licitud. Et contactarem en breu per organitzar el pagament.",
+  });
 }

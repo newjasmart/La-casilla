@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import {
   createReservationKey,
@@ -53,6 +54,7 @@ export function BookingFlow({
 }: BookingFlowProps) {
   const t = useTranslations("Booking");
   const locale = useLocale();
+  const paymentStatus = useSearchParams().get("payment");
 
   function selectionError(selection: Selection): string | null {
     if (!validDate(selection.arrival) || !validDate(selection.departure)) {
@@ -182,6 +184,12 @@ export function BookingFlow({
         website: String(form.get("website") ?? ""),
         locale,
       }, key);
+      if (result.checkoutUrl) {
+        // Payment was set up automatically — send the guest straight to
+        // Stripe rather than showing an in-page "thanks" panel first.
+        window.location.href = result.checkoutUrl;
+        return;
+      }
       setReservation(result);
     } catch (error) {
       const message = reservationErrorMessage(error);
@@ -208,6 +216,11 @@ export function BookingFlow({
 
   return (
     <section className={styles.booking} id="reserva" aria-labelledby="booking-title">
+      {(paymentStatus === "success" || paymentStatus === "cancelled") && (
+        <p className={styles.paymentStatusBanner} role="status">
+          {paymentStatus === "success" ? t("paymentSuccessBanner") : t("paymentCancelledBanner")}
+        </p>
+      )}
       <div className={styles.intro}>
         <p className={styles.kicker}>{t("kicker")}</p>
         <h2 id="booking-title">{t("title")}</h2>

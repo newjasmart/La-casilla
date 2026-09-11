@@ -42,6 +42,8 @@ export interface ReservationResponse {
   ok: boolean;
   reference?: string;
   status?: string;
+  /** Present when payment could be set up automatically — the guest should be sent straight here. */
+  checkoutUrl?: string;
   warning?: string;
   error?: string;
 }

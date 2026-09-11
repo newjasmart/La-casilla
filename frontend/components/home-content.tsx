@@ -344,10 +344,39 @@ export async function HomeContent() {
       />
       <Reviews reviews={reviews} />
 
+      <Cycling />
       <NextStep />
 
       <ContactForm />
     </>
+  );
+}
+
+function Cycling() {
+  const t = useTranslations("Cycling");
+
+  const highlights = [
+    { title: t("bracons"), body: t("braconsBody") },
+    { title: t("valley"), body: t("valleyBody") },
+    { title: t("greenway"), body: t("greenwayBody") },
+  ] as const;
+
+  return (
+    <section className={styles.dataSection} aria-labelledby="cycling-title">
+      <div className={styles.sectionHeading}>
+        <p className={styles.eyebrow}>{t("eyebrow")}</p>
+        <h2 id="cycling-title">{t("title")}</h2>
+        <p className={styles.cyclingIntro}>{t("intro")}</p>
+      </div>
+      <div className={styles.cyclingGrid}>
+        {highlights.map((item) => (
+          <div className={styles.cyclingCard} key={item.title}>
+            <h3>{item.title}</h3>
+            <p>{item.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -306,3 +306,35 @@ export function emailPropietariContacte(contact: Contacte, casa: CasaConfig): { 
     </div>`;
   return { subject, html };
 }
+
+interface PaymentConfirmedNotice {
+  reference: string;
+  firstName: string;
+  lastName: string;
+  arrival: string;
+  departure: string;
+  amount: number;
+  currency: string;
+}
+
+export function emailPropietariPagamentConfirmat(
+  n: PaymentConfirmedNotice,
+  casa: CasaConfig,
+): { subject: string; html: string } {
+  const subject = `Reserva pagada i confirmada — ${safeHeaderText(n.firstName)} ${safeHeaderText(n.lastName)}`;
+  const amount = escapeHtml(new Intl.NumberFormat("ca-ES", { style: "currency", currency: n.currency }).format(n.amount));
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#111827">
+      <h2 style="color:#0f766e">✅ Reserva pagada i confirmada</h2>
+      <p>El client ha completat el pagament en línia; la reserva ja està confirmada automàticament, no cal fer res més.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:16px">
+        <tr><td style="padding:6px 0;color:#6b7280">Client</td><td><strong>${escapeHtml(n.firstName)} ${escapeHtml(n.lastName)}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">Referència</td><td><strong>${escapeHtml(n.reference)}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">Arribada</td><td>${formatDate(n.arrival)}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">Sortida</td><td>${formatDate(n.departure)}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">Import cobrat</td><td><strong>${amount}</strong></td></tr>
+      </table>
+      ${peu(casa)}
+    </div>`;
+  return { subject, html };
+}

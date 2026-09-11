@@ -142,10 +142,11 @@ function ReservationsContent() {
         <Link className={styles.backLink} href="/admin">← Tornar a la gestió</Link>
       </div>
       <p className={styles.sectionHint}>
-        &quot;Envia enllaç de pagament&quot; envia al client un enllaç de pagament segur (Stripe) i marca la
-        reserva com a pendent de pagament; es confirma sola quan el pagament s&apos;ha completat.
-        &quot;Confirma sense pagament&quot; salta aquest pas — feu-ho servir només si heu quedat amb el
-        client per una altra via (transferència, efectiu a l&apos;arribada…).
+        El pagament (import total) es demana automàticament així que algú envia una sol·licitud —
+        no cal fer res. Es confirma sola quan el client paga, i rebreu un correu cada vegada. Si una
+        reserva es queda a &quot;Sol·licitada&quot;, vol dir que l&apos;enviament automàtic ha fallat:
+        useu el botó per tornar-ho a intentar. &quot;Confirma sense pagament&quot; només s&apos;hauria
+        d&apos;utilitzar si heu quedat amb el client per una altra via (transferència, efectiu…).
       </p>
 
       <div className={styles.rowActions} style={{ marginTop: 20 }}>
@@ -191,7 +192,7 @@ function ReservationsContent() {
                       {(row.status === "requested" || row.status === "payment_pending") && (
                         <div className={styles.rowActions}>
                           <button type="button" className={styles.primaryButton} disabled={rowBusy[row.id]} onClick={() => sendPaymentLink(row.id)}>
-                            {row.status === "payment_pending" ? "Reenvia l’enllaç de pagament" : "Envia enllaç de pagament"}
+                            {row.status === "payment_pending" ? "Reenvia l’enllaç de pagament" : "Torna a intentar l’enviament del pagament"}
                           </button>
                           <button type="button" className={styles.secondaryButton} disabled={rowBusy[row.id]} onClick={() => confirmReservation(row.id)}>
                             Confirma sense pagament

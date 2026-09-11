@@ -98,6 +98,17 @@
     "empty": "Todavía no hay ninguna reseña publicada.",
     "ratingAria": "{count} estrellas de 5"
   },
+  "Cycling": {
+    "eyebrow": "Ciclismo",
+    "title": "En el corazón del país del ciclismo.",
+    "intro": "La Casilla está en la Vall d’en Bas, en pleno paisaje volcánico de la Garrotxa — una de las comarcas clásicas del ciclismo catalán. Puertos de verdad, carreteras tranquilas y vías verdes sin tráfico, justo a la puerta de casa.",
+    "bracons": "Coll de Bracons",
+    "braconsBody": "Un puerto de montaña de verdad (1.132 m) que une el valle con Osona — una prueba exigente para quien busca desnivel.",
+    "valley": "La Vall d’en Bas",
+    "valleyBody": "Carreteras tranquilas y bien asfaltadas entre campos y volcanes — un calentamiento suave, o un día relajado para grupos de nivel mixto.",
+    "greenway": "La vía verde Olot–Girona",
+    "greenwayBody": "Casi 60 km de camino llano y sin tráfico — y Olot, la capital de la comarca, con tiendas y servicios para ciclistas."
+  },
   "NextStep": {
     "eyebrow": "Vuestra estancia",
     "title": "La casa, la pandilla y las bicicletas.",
@@ -136,6 +147,8 @@
     "privacyAccept": "Acepto que mis datos se utilicen para gestionar esta solicitud.",
     "honeypotLabel": "No rellenéis este campo",
     "closeError": "Cerrar el aviso",
+    "paymentSuccessBanner": "¡Pago recibido! Tu reserva ya está confirmada — recibirás un correo de confirmación en breve.",
+    "paymentCancelledBanner": "Has cancelado el pago. Tus datos no se han perdido: puedes retomarlo desde aquí.",
     "changeDates": "Cambiar fechas",
     "send": "Enviar la solicitud",
     "sending": "Enviando…",

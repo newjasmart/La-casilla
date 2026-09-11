@@ -1,12 +1,17 @@
+import type { CasaConfig } from "../_shared/config.ts";
 import type { WebhookStore } from "../_shared/db.ts";
 import { jsonResponse } from "../_shared/http.ts";
+import type { ResendPayload } from "../_shared/resend.ts";
 import { verifyStripeSignature, type StripeConfig } from "../_shared/stripe.ts";
+import { emailPropietariPagamentConfirmat } from "../_shared/templates.ts";
 
 const PROVIDER = "stripe";
 
 export interface WebhookDependencies {
+  casa: CasaConfig;
   stripeConfig: StripeConfig;
   store: WebhookStore;
+  sendEmail(payload: ResendPayload): Promise<void>;
   verifySignature: typeof verifyStripeSignature;
   logError?(message: string, error: unknown): void;
 }
@@ -90,6 +95,28 @@ async function handleSessionCompleted(event: StripeEvent, deps: WebhookDependenc
       `PAGAMENT REBUT PERÒ NO S'HA POGUT CONFIRMAR LA RESERVA ${intent.reservationId} — cal revisar-ho manualment`,
       error,
     );
+    return;
+  }
+
+  // The only thing Marc asked to have to do: know when a reservation is
+  // real. He already got the "someone requested these dates" email; this
+  // is the "and now they've actually paid, it's confirmed" one.
+  try {
+    const summary = await deps.store.getReservationSummary(intent.reservationId);
+    if (summary) {
+      const { subject, html } = emailPropietariPagamentConfirmat({
+        reference: summary.publicReference,
+        firstName: summary.firstName,
+        lastName: summary.lastName,
+        arrival: summary.arrivalDate,
+        departure: summary.departureDate,
+        amount: summary.totalAmount,
+        currency: summary.currency,
+      }, deps.casa);
+      await deps.sendEmail({ from: deps.casa.from, to: deps.casa.owner, subject, html });
+    }
+  } catch (error) {
+    deps.logError?.("Error enviant la notificació de pagament confirmat al propietari", error);
   }
 }
 
