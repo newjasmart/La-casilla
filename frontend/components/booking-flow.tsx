@@ -186,10 +186,10 @@ export function BookingFlow({
   if (reservation?.ok) {
     return (
       <section className={styles.booking} id="reserva" aria-labelledby="booking-title">
-        <div className={styles.success} role="status">
+        <div className={styles.success} role="status" data-testid="booking-success">
           <p className={styles.kicker}>{t("successTitle")}</p>
           <h2 id="booking-title">{t("successHeading")}</h2>
-          {reservation.reference && <p>{t("reference")} <strong>{reservation.reference}</strong></p>}
+          {reservation.reference && <p>{t("reference")} <strong data-testid="booking-reference">{reservation.reference}</strong></p>}
           <p>{t("successBody")}</p>
           {reservation.warning && <p>{reservation.warning}</p>}
         </div>
@@ -217,6 +217,7 @@ export function BookingFlow({
                 max={latest}
                 value={selection.arrival}
                 onChange={(event) => updateSelection("arrival", event.target.value)}
+                data-testid="booking-arrival"
               />
             </label>
             <label>
@@ -228,6 +229,7 @@ export function BookingFlow({
                 max={latest}
                 value={selection.departure}
                 onChange={(event) => updateSelection("departure", event.target.value)}
+                data-testid="booking-departure"
               />
             </label>
             <label>
@@ -239,6 +241,7 @@ export function BookingFlow({
                 max={adultsMax}
                 value={selection.adults}
                 onChange={(event) => updateSelection("adults", Number(event.target.value))}
+                data-testid="booking-adults"
               />
             </label>
             <label>
@@ -249,6 +252,7 @@ export function BookingFlow({
                 max={childrenMax}
                 value={selection.children}
                 onChange={(event) => updateSelection("children", Number(event.target.value))}
+                data-testid="booking-children"
               />
             </label>
             <label>
@@ -259,21 +263,22 @@ export function BookingFlow({
                 max={infantsMax}
                 value={selection.infants}
                 onChange={(event) => updateSelection("infants", Number(event.target.value))}
+                data-testid="booking-infants"
               />
             </label>
           </div>
           {knownCapacity && (
             <p className={styles.hint}>{t("capacityHint", { max: adultsMax, maxInfants: maxInfants ?? 0 })}</p>
           )}
-          <button className={styles.primaryButton} type="submit" disabled={checking}>
+          <button className={styles.primaryButton} type="submit" disabled={checking} data-testid="booking-check-availability">
             {checking ? t("checking") : t("checkAvailability")}
           </button>
         </form>
 
-        {quoteMessage && <p className={styles.error} role="alert">{quoteMessage}</p>}
+        {quoteMessage && <p className={styles.error} role="alert" data-testid="booking-quote-error">{quoteMessage}</p>}
 
         {quote?.available && (
-          <div className={styles.quote} role="status">
+          <div className={styles.quote} role="status" data-testid="booking-quote">
             <div>
               <p className={styles.available}>{t("available")}</p>
               <strong>{t("night", { count: quote.nights })}</strong>
@@ -291,22 +296,22 @@ export function BookingFlow({
             <h3>{t("requestTitle")}</h3>
             <p>{t("requestIntro")}</p>
             <div className={styles.contactGrid}>
-              <label>{t("firstName")}<input name="firstName" required minLength={1} maxLength={120} autoComplete="given-name" /></label>
-              <label>{t("lastName")}<input name="lastName" required minLength={1} maxLength={160} autoComplete="family-name" /></label>
-              <label>{t("email")}<input name="email" type="email" required maxLength={320} autoComplete="email" /></label>
-              <label>{t("phone")} <span>{t("optional")}</span><input name="phone" type="tel" maxLength={40} autoComplete="tel" /></label>
+              <label>{t("firstName")}<input name="firstName" required minLength={1} maxLength={120} autoComplete="given-name" data-testid="booking-first-name" /></label>
+              <label>{t("lastName")}<input name="lastName" required minLength={1} maxLength={160} autoComplete="family-name" data-testid="booking-last-name" /></label>
+              <label>{t("email")}<input name="email" type="email" required maxLength={320} autoComplete="email" data-testid="booking-email" /></label>
+              <label>{t("phone")} <span>{t("optional")}</span><input name="phone" type="tel" maxLength={40} autoComplete="tel" data-testid="booking-phone" /></label>
             </div>
             <label>{t("message")} <span>{t("optional")}</span>
               <textarea name="message" maxLength={5000} rows={4} placeholder={t("messagePlaceholder")} />
             </label>
             <label className={styles.privacy}>
-              <input name="privacyAccepted" type="checkbox" required />
+              <input name="privacyAccepted" type="checkbox" required data-testid="booking-privacy-accept" />
               {t("privacyAccept")}
             </label>
             <div className={styles.honeypot} aria-hidden="true">
               <label>{t("honeypotLabel")}<input name="website" tabIndex={-1} autoComplete="off" /></label>
             </div>
-            {reservationError && <p className={styles.error} role="alert">{reservationError}</p>}
+            {reservationError && <p className={styles.error} role="alert" data-testid="booking-reservation-error">{reservationError}</p>}
             <div className={styles.formActions}>
               <button
                 className={styles.secondaryButton}
@@ -320,7 +325,7 @@ export function BookingFlow({
               >
                 {t("changeDates")}
               </button>
-              <button className={styles.primaryButton} type="submit" disabled={sending}>
+              <button className={styles.primaryButton} type="submit" disabled={sending} data-testid="booking-submit">
                 {sending ? t("sending") : t("send")}
               </button>
             </div>
