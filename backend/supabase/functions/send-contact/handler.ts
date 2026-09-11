@@ -3,7 +3,7 @@ import type { ContactStore } from "../_shared/db.ts";
 import { completeAndRespond, corsHeaders, isAllowedOrigin, jsonResponse, claimFormRequest } from "../_shared/http.ts";
 import type { ResendPayload } from "../_shared/resend.ts";
 import { validateIdempotencyKey } from "../_shared/security.ts";
-import { emailPropietariContacte } from "../_shared/templates.ts";
+import { emailClientContacte, emailPropietariContacte } from "../_shared/templates.ts";
 
 export interface ContacteInput {
   nom: string;
@@ -124,16 +124,20 @@ async function handleContactRequest(request: Request, deps: ContactDependencies)
   }
 
   try {
-    const { subject, html } = emailPropietariContacte(body as ContacteInput, deps.config.casa);
-    await deps.sendEmail({
-      from: deps.config.casa.from,
-      to: deps.config.casa.owner,
-      subject,
-      html,
-      reply_to: body.email,
-    });
+    const client = emailClientContacte(body as ContacteInput, deps.config.casa);
+    const owner = emailPropietariContacte(body as ContacteInput, deps.config.casa);
+    await Promise.all([
+      deps.sendEmail({ from: deps.config.casa.from, to: body.email!, subject: client.subject, html: client.html }),
+      deps.sendEmail({
+        from: deps.config.casa.from,
+        to: deps.config.casa.owner,
+        subject: owner.subject,
+        html: owner.html,
+        reply_to: body.email!,
+      }),
+    ]);
   } catch (error) {
-    deps.logError?.("Error enviant el correu de contacte", error);
+    deps.logError?.("Error enviant els correus de contacte", error);
     return finish({
       ok: true,
       warning: "Missatge desat però l'enviament del correu ha fallat",

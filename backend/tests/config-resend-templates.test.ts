@@ -5,7 +5,7 @@ import { ConfigError, loadFunctionConfig, type CasaConfig, type EnvReader } from
 import { sendEmail, type ResendPayload } from "../supabase/functions/_shared/resend.ts";
 import { escapeHtml } from "../supabase/functions/_shared/security.ts";
 import { loadStripeConfig } from "../supabase/functions/_shared/stripe.ts";
-import { emailClientPaymentLink, emailClientReserva, emailPropietariContacte, emailPropietariReserva } from "../supabase/functions/_shared/templates.ts";
+import { emailClientContacte, emailClientPaymentLink, emailClientReserva, emailPropietariContacte, emailPropietariReserva } from "../supabase/functions/_shared/templates.ts";
 
 const casa: CasaConfig = {
   nom: "La Casilla",
@@ -135,8 +135,11 @@ test("HTML escaping handles text, attributes, and every visitor template field",
   const contact = emailPropietariContacte({
     nom: attack, email: attack, telefon: attack, assumpte: attack, missatge: attack,
   }, casa);
+  const contactClient = emailClientContacte({
+    nom: attack, email: attack, telefon: attack, assumpte: attack, missatge: attack, locale: "ca",
+  }, casa);
 
-  for (const html of [client.html, owner.html, contact.html]) {
+  for (const html of [client.html, owner.html, contact.html, contactClient.html]) {
     assert.doesNotMatch(html, /<img src=x/);
     assert.match(html, /&lt;img src=x/);
   }

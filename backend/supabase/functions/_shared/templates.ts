@@ -287,6 +287,74 @@ interface Contacte {
   telefon?: string | null;
   assumpte?: string | null;
   missatge: string;
+  locale?: string | null;
+}
+
+const CONTACT_CLIENT_STRINGS: Record<ClientLocale, {
+  subject: string;
+  greeting: (name: string) => string;
+  intro: (casa: string) => string;
+  yourMessage: string;
+  replyHint: (phone: string) => string;
+  team: (casa: string) => string;
+}> = {
+  ca: {
+    subject: "Hem rebut el teu missatge",
+    greeting: (name) => `Hola ${name},`,
+    intro: (casa) => `Gràcies per escriure a <strong>${casa}</strong>. Hem rebut el teu missatge correctament i et respondrem directament a aquest correu el més aviat possible.`,
+    yourMessage: "El teu missatge",
+    replyHint: (phone) => `Si és urgent, també ens pots trucar al <strong>${phone}</strong>.`,
+    team: (casa) => `L'equip de ${casa}`,
+  },
+  es: {
+    subject: "Hemos recibido tu mensaje",
+    greeting: (name) => `Hola ${name},`,
+    intro: (casa) => `Gracias por escribir a <strong>${casa}</strong>. Hemos recibido tu mensaje correctamente y te responderemos directamente a este correo lo antes posible.`,
+    yourMessage: "Tu mensaje",
+    replyHint: (phone) => `Si es urgente, también puedes llamarnos al <strong>${phone}</strong>.`,
+    team: (casa) => `El equipo de ${casa}`,
+  },
+  en: {
+    subject: "We've received your message",
+    greeting: (name) => `Hi ${name},`,
+    intro: (casa) => `Thank you for writing to <strong>${casa}</strong>. We've received your message and will reply directly to this email as soon as possible.`,
+    yourMessage: "Your message",
+    replyHint: (phone) => `If it's urgent, you can also call us at <strong>${phone}</strong>.`,
+    team: (casa) => `The ${casa} team`,
+  },
+  nl: {
+    subject: "We hebben je bericht ontvangen",
+    greeting: (name) => `Hallo ${name},`,
+    intro: (casa) => `Bedankt voor je bericht aan <strong>${casa}</strong>. We hebben het goed ontvangen en antwoorden zo snel mogelijk rechtstreeks op deze e-mail.`,
+    yourMessage: "Je bericht",
+    replyHint: (phone) => `Is het dringend? Dan kun je ons ook bellen op <strong>${phone}</strong>.`,
+    team: (casa) => `Het team van ${casa}`,
+  },
+  fr: {
+    subject: "Nous avons bien reçu votre message",
+    greeting: (name) => `Bonjour ${name},`,
+    intro: (casa) => `Merci d'avoir écrit à <strong>${casa}</strong>. Nous avons bien reçu votre message et vous répondrons directement à cet e-mail dès que possible.`,
+    yourMessage: "Votre message",
+    replyHint: (phone) => `Si c'est urgent, vous pouvez aussi nous appeler au <strong>${phone}</strong>.`,
+    team: (casa) => `L'équipe de ${casa}`,
+  },
+};
+
+export function emailClientContacte(contact: Contacte, casa: CasaConfig): { subject: string; html: string } {
+  const locale = resolveClientLocale(contact.locale);
+  const s = CONTACT_CLIENT_STRINGS[locale];
+  const casaName = escapeHtml(casa.nom);
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#111827">
+      <h2 style="color:#0f766e">${s.greeting(escapeHtml(contact.nom))}</h2>
+      <p>${s.intro(casaName)}</p>
+      <h3 style="margin-top:24px">${s.yourMessage}</h3>
+      <p style="white-space:pre-wrap;background:#f9fafb;padding:12px;border-radius:6px">${escapeHtml(contact.missatge)}</p>
+      <p style="margin-top:24px">${s.replyHint(escapeHtml(casa.telefon))}</p>
+      <p><em>${s.team(casaName)}</em></p>
+      ${peu(casa)}
+    </div>`;
+  return { subject: s.subject, html };
 }
 
 export function emailPropietariContacte(contact: Contacte, casa: CasaConfig): { subject: string; html: string } {

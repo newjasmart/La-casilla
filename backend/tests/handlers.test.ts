@@ -167,10 +167,10 @@ test("POST requires a valid Idempotency-Key before database work", async () => {
   assert.equal(store.claimInputs.length, 0);
 });
 
-test("contact normal path stores once, emails once, and stores only salted hashes", async () => {
+test("contact normal path stores once, emails both guest and owner, and stores only salted hashes", async () => {
   const store = new MockContactStore();
-  const emails: unknown[] = [];
-  const handler = createContactHandler({ config, store, sendEmail: async (email) => { emails.push(email); } });
+  const emails: Array<{ to: string | string[] }> = [];
+  const handler = createContactHandler({ config, store, sendEmail: async (email) => { emails.push(email as { to: string | string[] }); } });
   const response = await handler(request(contactBody));
 
   assert.equal(response.status, 200);
@@ -178,7 +178,9 @@ test("contact normal path stores once, emails once, and stores only salted hashe
   assert.equal(store.inserted.length, 1);
   assert.equal(store.inserted[0].privacy_notice_accepted_at instanceof String, false);
   assert.equal("nom" in store.inserted[0], false);
-  assert.equal(emails.length, 1);
+  assert.equal(emails.length, 2);
+  assert.ok(emails.some((e) => e.to === contactBody.email)); // confirmation to the guest
+  assert.ok(emails.some((e) => e.to === config.casa.owner)); // notification to Marc
   assert.match(store.claimInputs[0].clientHash, /^[a-f0-9]{64}$/);
   assert.match(store.claimInputs[0].keyHash, /^[a-f0-9]{64}$/);
   assert.notEqual(store.claimInputs[0].clientHash, "203.0.113.10");
