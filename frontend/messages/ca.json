@@ -104,10 +104,13 @@
     "intro": "La Casilla és a la Vall d’en Bas, al bell mig del paisatge volcànic de la Garrotxa — una de les comarques clàssiques del ciclisme català. Ports de debò, carreteres tranquil·les i vies verdes sense trànsit, tot just a la porta de casa.",
     "bracons": "Coll de Bracons",
     "braconsBody": "Un port de muntanya de debò (1.132 m) que uneix la vall amb Osona — una prova exigent per a qui busca desnivell.",
+    "braconsStats": "13 km · +592 m de desnivell · ~1 h de pujada · Exigent",
     "valley": "La Vall d’en Bas",
     "valleyBody": "Carreteres tranquil·les i ben asfaltades entre camps i volcans — un escalfament suau, o un dia relaxat per a grups de nivell mixt.",
+    "valleyStats": "~5 km anada i tornada · pla · Fàcil",
     "greenway": "La via verda Olot–Girona",
-    "greenwayBody": "Gairebé 60 km de camí pla i sense trànsit — i Olot mateix, capital de la comarca, amb botigues i serveis per a ciclistes."
+    "greenwayBody": "Gairebé 60 km de camí pla i sense trànsit — i Olot mateix, capital de la comarca, amb botigues i serveis per a ciclistes.",
+    "greenwayStats": "11,4 km fins a Olot (baixada suau) · Fàcil"
   },
   "NextStep": {
     "eyebrow": "La vostra estada",

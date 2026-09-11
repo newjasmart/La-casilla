@@ -104,10 +104,13 @@
     "intro": "La Casilla sits in the Vall d’en Bas, right in the volcanic landscape of the Garrotxa — one of Catalonia’s classic cycling regions. Real climbs, quiet valley roads and traffic-free greenways all start from your doorstep.",
     "bracons": "Coll de Bracons",
     "braconsBody": "A real mountain pass (1,132 m) linking the valley to Osona — a proper test for anyone chasing elevation.",
+    "braconsStats": "13 km · +592 m elevation · ~1h uphill · Challenging",
     "valley": "The Vall d’en Bas",
     "valleyBody": "Quiet, well-surfaced roads through farmland and volcanic cones — an easy warm-up, or a relaxed day for mixed-ability groups.",
+    "valleyStats": "~5 km round trip · flat · Easy",
     "greenway": "The Olot–Girona greenway",
-    "greenwayBody": "Nearly 60 km of flat, traffic-free path — plus Olot itself, the comarca’s hub, with bike shops and services."
+    "greenwayBody": "Nearly 60 km of flat, traffic-free path — plus Olot itself, the comarca’s hub, with bike shops and services.",
+    "greenwayStats": "11.4 km to Olot (gentle downhill) · Easy"
   },
   "NextStep": {
     "eyebrow": "Your stay",

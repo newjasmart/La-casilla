@@ -352,13 +352,40 @@ export async function HomeContent() {
   );
 }
 
+// La Casilla itself, and three real, verified points reachable by road from
+// it (checked against OpenStreetMap/open-elevation, not invented): the
+// Coll de Bracons pass summit, Sant Esteve d'en Bas village centre, and
+// Olot. Used to embed real Google Maps cycling directions per route below.
+const LA_CASILLA_COORDS = { lat: 42.1232233, lon: 2.4850439 };
+const COLL_DE_BRACONS_COORDS = { lat: 42.1083569, lon: 2.3763248 };
+const SANT_ESTEVE_DEN_BAS_COORDS = { lat: 42.1184367, lon: 2.4577552 };
+const OLOT_COORDS = { lat: 42.1822177, lon: 2.4890211 };
+
+function bikeRouteEmbedUrl(to: { lat: number; lon: number }): string {
+  const from = LA_CASILLA_COORDS;
+  const pb = `!1m10!4m9!3e1!4m3!3m2!1d${from.lat}!2d${from.lon}!4m3!3m2!1d${to.lat}!2d${to.lon}`;
+  return `https://www.google.com/maps/embed?pb=${pb}`;
+}
+
+function RouteMap({ to, title }: { to: { lat: number; lon: number }; title: string }) {
+  return (
+    <iframe
+      className={styles.cyclingMap}
+      src={bikeRouteEmbedUrl(to)}
+      title={title}
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+    />
+  );
+}
+
 function Cycling() {
   const t = useTranslations("Cycling");
 
   const highlights = [
-    { title: t("bracons"), body: t("braconsBody") },
-    { title: t("valley"), body: t("valleyBody") },
-    { title: t("greenway"), body: t("greenwayBody") },
+    { title: t("bracons"), body: t("braconsBody"), stats: t("braconsStats"), to: COLL_DE_BRACONS_COORDS },
+    { title: t("valley"), body: t("valleyBody"), stats: t("valleyStats"), to: SANT_ESTEVE_DEN_BAS_COORDS },
+    { title: t("greenway"), body: t("greenwayBody"), stats: t("greenwayStats"), to: OLOT_COORDS },
   ] as const;
 
   return (
@@ -371,7 +398,9 @@ function Cycling() {
       <div className={styles.cyclingGrid}>
         {highlights.map((item) => (
           <div className={styles.cyclingCard} key={item.title}>
+            <RouteMap to={item.to} title={item.title} />
             <h3>{item.title}</h3>
+            <p className={styles.cyclingStats}>{item.stats}</p>
             <p>{item.body}</p>
           </div>
         ))}

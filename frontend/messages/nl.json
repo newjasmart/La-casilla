@@ -104,10 +104,13 @@
     "intro": "La Casilla ligt in de Vall d’en Bas, midden in het vulkanische landschap van de Garrotxa — een van de klassieke fietsstreken van Catalonië. Echte cols, rustige dalwegen en verkeersvrije fietspaden, vlak voor de deur.",
     "bracons": "Coll de Bracons",
     "braconsBody": "Een echte bergpas (1.132 m) tussen de vallei en Osona — een pittige uitdaging voor wie hoogtemeters zoekt.",
+    "braconsStats": "13 km · +592 m stijging · ~1u klimmen · Uitdagend",
     "valley": "De Vall d’en Bas",
     "valleyBody": "Rustige, goed geasfalteerde wegen tussen akkers en vulkanen — een rustige warming-up, of een ontspannen dag voor groepen met wisselend niveau.",
+    "valleyStats": "~5 km heen en terug · vlak · Makkelijk",
     "greenway": "Het fietspad Olot–Girona",
-    "greenwayBody": "Bijna 60 km vlak, verkeersvrij fietspad — en Olot zelf, de hoofdplaats van de streek, met fietswinkels en voorzieningen."
+    "greenwayBody": "Bijna 60 km vlak, verkeersvrij fietspad — en Olot zelf, de hoofdplaats van de streek, met fietswinkels en voorzieningen.",
+    "greenwayStats": "11,4 km naar Olot (lichte afdaling) · Makkelijk"
   },
   "NextStep": {
     "eyebrow": "Jullie verblijf",

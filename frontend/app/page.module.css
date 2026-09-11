@@ -326,7 +326,7 @@
 }
 
 .cyclingCard {
-  padding: 30px 26px;
+  overflow: hidden;
   border-radius: 20px;
   background: var(--color-surface);
 }
@@ -335,10 +335,26 @@
   font-family: var(--font-serif);
   font-size: 1.25rem;
   font-weight: 500;
-  margin-bottom: 10px;
+  margin: 22px 26px 0;
 }
 
-.cyclingCard p { color: var(--color-muted); font-size: 0.92rem; line-height: 1.5; }
+.cyclingCard > p { margin: 0 26px 26px; color: var(--color-muted); font-size: 0.92rem; line-height: 1.5; }
+
+.cyclingCard > p.cyclingStats {
+  margin: 10px 26px 0;
+  color: var(--color-accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cyclingMap {
+  display: block;
+  width: 100%;
+  height: 220px;
+  border: 0;
+}
 
 .roomGrid {
   display: grid;
