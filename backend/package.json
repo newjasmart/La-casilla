@@ -16,6 +16,8 @@
     "functions:deploy": "supabase functions deploy",
     "functions:deploy:reservation": "supabase functions deploy send-reservation",
     "functions:deploy:contact": "supabase functions deploy send-contact",
+    "functions:deploy:payment-link": "supabase functions deploy create-payment-link",
+    "functions:deploy:stripe-webhook": "supabase functions deploy stripe-webhook",
     "secrets:set": "supabase secrets set --env-file ./supabase/functions/.env",
     "secrets:set:production": "supabase secrets set --env-file ./supabase/functions/.env.production",
     "types:generate": "supabase gen types typescript --local > types/database.ts",

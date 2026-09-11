@@ -155,6 +155,109 @@ export function emailClientReserva(r: Reserva, casa: CasaConfig): { subject: str
   return { subject, html };
 }
 
+const PAYMENT_LINK_STRINGS: Record<ClientLocale, {
+  subject: (casa: string) => string;
+  greeting: (name: string) => string;
+  intro: (casa: string) => string;
+  amount: string;
+  reference: string;
+  cta: string;
+  expiry: string;
+  questions: (phone: string) => string;
+  team: (casa: string) => string;
+}> = {
+  ca: {
+    subject: (casa) => `Enllaç de pagament de la teva reserva a ${casa}`,
+    greeting: (name) => `Hola ${name},`,
+    intro: (casa) => `Bones notícies: la teva estada a <strong>${casa}</strong> ja té les dates confirmades. Per acabar de reservar-la, fes el pagament amb l'enllaç d'aquí sota.`,
+    amount: "Import a pagar", reference: "Referència",
+    cta: "Paga la reserva",
+    expiry: "Aquest enllaç de pagament és personal i només s'ha d'utilitzar un cop.",
+    questions: (phone) => `Si tens cap pregunta, respon a aquest correu o truca'ns al <strong>${phone}</strong>.`,
+    team: (casa) => `L'equip de ${casa}`,
+  },
+  es: {
+    subject: (casa) => `Enlace de pago de tu reserva en ${casa}`,
+    greeting: (name) => `Hola ${name},`,
+    intro: (casa) => `Buenas noticias: tu estancia en <strong>${casa}</strong> ya tiene las fechas confirmadas. Para terminar de reservarla, realiza el pago con el enlace de abajo.`,
+    amount: "Importe a pagar", reference: "Referencia",
+    cta: "Paga la reserva",
+    expiry: "Este enlace de pago es personal y solo debe usarse una vez.",
+    questions: (phone) => `Si tienes alguna pregunta, responde a este correo o llámanos al <strong>${phone}</strong>.`,
+    team: (casa) => `El equipo de ${casa}`,
+  },
+  en: {
+    subject: (casa) => `Payment link for your booking at ${casa}`,
+    greeting: (name) => `Hi ${name},`,
+    intro: (casa) => `Good news: your stay at <strong>${casa}</strong> now has confirmed dates. To finish booking it, complete the payment using the link below.`,
+    amount: "Amount due", reference: "Reference",
+    cta: "Pay for your booking",
+    expiry: "This payment link is personal and should only be used once.",
+    questions: (phone) => `If you have any questions, reply to this email or call us at <strong>${phone}</strong>.`,
+    team: (casa) => `The ${casa} team`,
+  },
+  nl: {
+    subject: (casa) => `Betaallink voor je reservering bij ${casa}`,
+    greeting: (name) => `Hallo ${name},`,
+    intro: (casa) => `Goed nieuws: je verblijf bij <strong>${casa}</strong> heeft nu bevestigde data. Rond je reservering af door te betalen via onderstaande link.`,
+    amount: "Te betalen bedrag", reference: "Referentie",
+    cta: "Betaal je reservering",
+    expiry: "Deze betaallink is persoonlijk en mag maar één keer gebruikt worden.",
+    questions: (phone) => `Heb je nog vragen? Antwoord op deze e-mail of bel ons op <strong>${phone}</strong>.`,
+    team: (casa) => `Het team van ${casa}`,
+  },
+  fr: {
+    subject: (casa) => `Lien de paiement pour votre réservation à ${casa}`,
+    greeting: (name) => `Bonjour ${name},`,
+    intro: (casa) => `Bonne nouvelle : votre séjour à <strong>${casa}</strong> a désormais des dates confirmées. Pour finaliser votre réservation, réglez le paiement via le lien ci-dessous.`,
+    amount: "Montant à payer", reference: "Référence",
+    cta: "Payer la réservation",
+    expiry: "Ce lien de paiement est personnel et ne doit être utilisé qu'une seule fois.",
+    questions: (phone) => `Pour toute question, répondez à cet e-mail ou appelez-nous au <strong>${phone}</strong>.`,
+    team: (casa) => `L'équipe de ${casa}`,
+  },
+};
+
+interface PaymentLink {
+  firstName: string;
+  email: string;
+  reference: string;
+  amount: number;
+  currency: string;
+  checkoutUrl: string;
+  locale?: string | null;
+}
+
+export function emailClientPaymentLink(p: PaymentLink, casa: CasaConfig): { subject: string; html: string } {
+  const locale = resolveClientLocale(p.locale);
+  const s = PAYMENT_LINK_STRINGS[locale];
+  const casaName = escapeHtml(casa.nom);
+  const subject = s.subject(safeHeaderText(casa.nom));
+  const formattedAmount = escapeHtml(
+    new Intl.NumberFormat(INTL_LOCALE_TAGS[locale], { style: "currency", currency: p.currency }).format(p.amount),
+  );
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#111827">
+      <h2 style="color:#0f766e">${s.greeting(escapeHtml(p.firstName))}</h2>
+      <p>${s.intro(casaName)}</p>
+
+      <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:16px">
+        <tr><td style="padding:6px 0;color:#6b7280">${s.reference}</td><td><strong>${escapeHtml(p.reference)}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280">${s.amount}</td><td><strong>${formattedAmount}</strong></td></tr>
+      </table>
+
+      <p style="margin:28px 0;text-align:center">
+        <a href="${escapeHtmlAttribute(p.checkoutUrl)}" style="background:#0f766e;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">${s.cta}</a>
+      </p>
+      <p style="font-size:12px;color:#6b7280">${s.expiry}</p>
+
+      <p style="margin-top:24px">${s.questions(escapeHtml(casa.telefon))}</p>
+      <p><em>${s.team(casaName)}</em></p>
+      ${peu(casa)}
+    </div>`;
+  return { subject, html };
+}
+
 export function emailPropietariReserva(r: Reserva, casa: CasaConfig): { subject: string; html: string } {
   const subject = `Nova sol·licitud de reserva — ${safeHeaderText(r.nom)} ${safeHeaderText(r.cognoms)}`;
   const html = `

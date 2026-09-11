@@ -97,6 +97,23 @@ function ReservationsContent() {
     mutate();
   }
 
+  async function sendPaymentLink(id: string) {
+    setRowError((current) => ({ ...current, [id]: "" }));
+    setRowBusy((current) => ({ ...current, [id]: true }));
+    const { data, error } = await getSupabaseBrowserClient().functions.invoke("create-payment-link", {
+      body: { reservationId: id },
+    });
+    setRowBusy((current) => ({ ...current, [id]: false }));
+    if (error) {
+      setRowError((current) => ({ ...current, [id]: supabaseErrorMessage(error) }));
+      return;
+    }
+    if (data?.warning) {
+      setRowError((current) => ({ ...current, [id]: data.warning }));
+    }
+    mutate();
+  }
+
   async function cancelReservation(id: string) {
     const reason = prompt("Motiu de la cancel·lació (obligatori, mínim 3 caràcters):");
     if (reason === null) return;
@@ -124,6 +141,12 @@ function ReservationsContent() {
         <h1>Reserves</h1>
         <Link className={styles.backLink} href="/admin">← Tornar a la gestió</Link>
       </div>
+      <p className={styles.sectionHint}>
+        &quot;Envia enllaç de pagament&quot; envia al client un enllaç de pagament segur (Stripe) i marca la
+        reserva com a pendent de pagament; es confirma sola quan el pagament s&apos;ha completat.
+        &quot;Confirma sense pagament&quot; salta aquest pas — feu-ho servir només si heu quedat amb el
+        client per una altra via (transferència, efectiu a l&apos;arribada…).
+      </p>
 
       <div className={styles.rowActions} style={{ marginTop: 20 }}>
         {FILTERS.map((item) => (
@@ -167,8 +190,11 @@ function ReservationsContent() {
                     <td>
                       {(row.status === "requested" || row.status === "payment_pending") && (
                         <div className={styles.rowActions}>
+                          <button type="button" className={styles.primaryButton} disabled={rowBusy[row.id]} onClick={() => sendPaymentLink(row.id)}>
+                            {row.status === "payment_pending" ? "Reenvia l’enllaç de pagament" : "Envia enllaç de pagament"}
+                          </button>
                           <button type="button" className={styles.secondaryButton} disabled={rowBusy[row.id]} onClick={() => confirmReservation(row.id)}>
-                            Confirma
+                            Confirma sense pagament
                           </button>
                           <button type="button" className={styles.dangerButton} disabled={rowBusy[row.id]} onClick={() => cancelReservation(row.id)}>
                             Cancel·la

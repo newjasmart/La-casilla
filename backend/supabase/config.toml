@@ -42,3 +42,13 @@ verify_jwt = false
 
 [functions.send-contact]
 verify_jwt = false
+
+# create-payment-link: called by an authenticated admin session — keep the
+# platform's own JWT check (default, so no entry needed) as defense in depth
+# on top of the RLS-based staff check inside the handler itself.
+
+# stripe-webhook: called by Stripe's servers, which never carry a Supabase
+# JWT — authenticity here comes entirely from verifying the Stripe-Signature
+# header (see _shared/stripe.ts), not from Supabase's gateway.
+[functions.stripe-webhook]
+verify_jwt = false

@@ -369,18 +369,11 @@
   background: var(--color-surface);
 }
 
-.mediaImage,
 .mediaImageFrame {
   min-height: 390px;
   background-color: #d9ded5;
+  position: relative;
 }
-
-.mediaImage {
-  background-position: center;
-  background-size: cover;
-}
-
-.mediaImageFrame { position: relative; }
 .mediaImageFrame img { object-fit: cover; }
 
 .mediaCard figcaption {
@@ -585,7 +578,6 @@
   .roomGrid { grid-template-columns: 1fr; grid-template-rows: 520px 360px 360px; }
   .roomCardLarge { grid-row: auto; }
   .mediaGrid { grid-template-columns: 1fr; }
-  .mediaImage,
   .mediaImageFrame { min-height: 300px; }
   .nextStep,
   .loadingPanel { border-radius: 20px; }

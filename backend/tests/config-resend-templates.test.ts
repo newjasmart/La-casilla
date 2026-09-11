@@ -4,7 +4,8 @@ import test from "node:test";
 import { ConfigError, loadFunctionConfig, type CasaConfig, type EnvReader } from "../supabase/functions/_shared/config.ts";
 import { sendEmail, type ResendPayload } from "../supabase/functions/_shared/resend.ts";
 import { escapeHtml } from "../supabase/functions/_shared/security.ts";
-import { emailClientReserva, emailPropietariContacte, emailPropietariReserva } from "../supabase/functions/_shared/templates.ts";
+import { loadStripeConfig } from "../supabase/functions/_shared/stripe.ts";
+import { emailClientPaymentLink, emailClientReserva, emailPropietariContacte, emailPropietariReserva } from "../supabase/functions/_shared/templates.ts";
 
 const casa: CasaConfig = {
   nom: "La Casilla",
@@ -143,4 +144,55 @@ test("HTML escaping handles text, attributes, and every visitor template field",
   assert.match(contact.html, /mailto:&quot;&gt;&lt;img/);
   assert.doesNotMatch(owner.subject, /[\r\n]/);
   assert.doesNotMatch(contact.subject, /[\r\n]/);
+});
+
+function stripeEnv(overrides: Record<string, string | undefined> = {}): EnvReader {
+  const values: Record<string, string | undefined> = {
+    STRIPE_SECRET_KEY: "sk_test_51ABCDEFGHIJKLMNOP",
+    STRIPE_WEBHOOK_SECRET: "whsec_test_abcdefghijklmnop",
+    ...overrides,
+  };
+  return { get: (name) => values[name] };
+}
+
+test("Stripe config accepts a well-formed test-mode secret key", () => {
+  const stripeConfig = loadStripeConfig(stripeEnv());
+  assert.equal(stripeConfig.secretKey, "sk_test_51ABCDEFGHIJKLMNOP");
+  assert.equal(stripeConfig.webhookSecret, "whsec_test_abcdefghijklmnop");
+});
+
+test("Stripe config accepts a live-mode secret key", () => {
+  const stripeConfig = loadStripeConfig(stripeEnv({ STRIPE_SECRET_KEY: "sk_live_51ABCDEFGHIJKLMNOP" }));
+  assert.equal(stripeConfig.secretKey, "sk_live_51ABCDEFGHIJKLMNOP");
+});
+
+test("Stripe config rejects a missing secret key", () => {
+  assert.throws(() => loadStripeConfig(stripeEnv({ STRIPE_SECRET_KEY: undefined })), /STRIPE_SECRET_KEY/);
+});
+
+test("Stripe config rejects a key that doesn't look like a Stripe secret key", () => {
+  // Catches the classic mistake of pasting the *publishable* key (pk_…) into
+  // the server-side secret — a real, easy-to-make error worth failing loudly on.
+  assert.throws(() => loadStripeConfig(stripeEnv({ STRIPE_SECRET_KEY: "pk_test_51ABCDEFGHIJKLMNOP" })), /aspecte d'una clau secreta/);
+});
+
+test("Stripe config rejects a missing webhook secret", () => {
+  assert.throws(() => loadStripeConfig(stripeEnv({ STRIPE_WEBHOOK_SECRET: undefined })), /STRIPE_WEBHOOK_SECRET/);
+});
+
+test("emailClientPaymentLink escapes untrusted fields and renders the checkout link", () => {
+  const attack = '"><img src=x onerror=alert(1)>';
+  const { html, subject } = emailClientPaymentLink({
+    firstName: attack,
+    email: "guest@example.com",
+    reference: "LC-ABCDEF123456",
+    amount: 450,
+    currency: "EUR",
+    checkoutUrl: "https://checkout.stripe.com/pay/cs_test_123",
+    locale: "ca",
+  }, casa);
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.match(html, /&lt;img src=x/);
+  assert.match(html, /https:\/\/checkout\.stripe\.com\/pay\/cs_test_123/);
+  assert.doesNotMatch(subject, /[\r\n]/);
 });

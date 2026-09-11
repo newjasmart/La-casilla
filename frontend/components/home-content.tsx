@@ -192,12 +192,9 @@ function MediaGallery({ media }: { media: PublicPropertyMedia[] }) {
         {media.length > 0
           ? media.map((item) => (
               <figure className={styles.mediaCard} key={item.id}>
-                <div
-                  className={styles.mediaImage}
-                  style={{ backgroundImage: `url("${item.url}")` }}
-                  role="img"
-                  aria-label={item.alt_text}
-                />
+                <div className={styles.mediaImageFrame}>
+                  <Image src={item.url} alt={item.alt_text} fill sizes="(max-width: 680px) 100vw, 50vw" />
+                </div>
                 {item.caption && <figcaption>{item.caption}</figcaption>}
               </figure>
             ))
@@ -312,10 +309,7 @@ export async function HomeContent() {
       <section className={styles.hero} aria-labelledby="hero-title">
         <div className={styles.heroBackdrop} aria-hidden="true">
           {heroMedia ? (
-            <div
-              className={styles.heroRemoteImage}
-              style={{ backgroundImage: `url("${heroMedia.url}")` }}
-            />
+            <Image src={heroMedia.url} alt="" fill priority sizes="100vw" className={styles.heroRemoteImage} />
           ) : (
             <Image src={LOCAL_HERO} alt="" fill priority sizes="100vw" />
           )}
