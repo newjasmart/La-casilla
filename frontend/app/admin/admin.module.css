@@ -39,6 +39,19 @@
 
 .who button:hover { background: #f2ede4; }
 
+.who button:focus-visible,
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.dangerButton:focus-visible,
+.dashboardCard:focus-visible,
+.backLink:focus-visible,
+.form input:focus-visible,
+.form select:focus-visible,
+.form textarea:focus-visible {
+  outline: 3px solid rgb(53 75 55 / 35%);
+  outline-offset: 2px;
+}
+
 .main {
   max-width: 1000px;
   margin: 0 auto;

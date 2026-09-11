@@ -6,7 +6,9 @@
     "availability": "Disponibilidad",
     "contact": "Contacto",
     "book": "Reservar",
-    "language": "Idioma"
+    "language": "Idioma",
+    "openMenu": "Abrir el menú",
+    "closeMenu": "Cerrar el menú"
   },
   "Footer": {
     "tagline": "Un lugar para detenerse y reencontrarse."

@@ -6,7 +6,9 @@
     "availability": "Beschikbaarheid",
     "contact": "Contact",
     "book": "Reserveren",
-    "language": "Taal"
+    "language": "Taal",
+    "openMenu": "Menu openen",
+    "closeMenu": "Menu sluiten"
   },
   "Footer": {
     "tagline": "Een plek om tot rust te komen en elkaar terug te vinden."

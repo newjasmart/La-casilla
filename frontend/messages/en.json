@@ -6,7 +6,9 @@
     "availability": "Availability",
     "contact": "Contact",
     "book": "Book now",
-    "language": "Language"
+    "language": "Language",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "Footer": {
     "tagline": "A place to slow down and reconnect."

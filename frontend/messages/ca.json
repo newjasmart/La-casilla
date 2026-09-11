@@ -6,7 +6,9 @@
     "availability": "Disponibilitat",
     "contact": "Contacte",
     "book": "Reservar",
-    "language": "Idioma"
+    "language": "Idioma",
+    "openMenu": "Obre el menú",
+    "closeMenu": "Tanca el menú"
   },
   "Footer": {
     "tagline": "Un lloc per aturar-se i retrobar-se."

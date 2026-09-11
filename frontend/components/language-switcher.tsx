@@ -23,6 +23,7 @@ export function LanguageSwitcher() {
   const params = useParams();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -31,9 +32,30 @@ export function LanguageSwitcher() {
         setOpen(false);
       }
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        // Standard listbox behaviour: Escape returns focus to the trigger
+        // rather than leaving a keyboard user stranded with nothing focused.
+        triggerRef.current?.focus();
+      }
+    }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
+
+  function handleBlur(event: React.FocusEvent<HTMLDivElement>) {
+    // Closes when focus truly leaves the widget (e.g. Tab past the last
+    // option) — without this, a keyboard user could tab away and leave the
+    // menu visually open with nothing pointing at it.
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setOpen(false);
+    }
+  }
 
   function selectLocale(nextLocale: string) {
     setOpen(false);
@@ -46,9 +68,10 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <div className={styles.languageSwitcher} ref={containerRef}>
+    <div className={styles.languageSwitcher} ref={containerRef} onBlur={handleBlur}>
       <button
         type="button"
+        ref={triggerRef}
         className={styles.languageButton}
         aria-haspopup="listbox"
         aria-expanded={open}
